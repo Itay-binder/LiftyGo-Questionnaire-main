@@ -805,8 +805,19 @@ if(currentStep === 1){
         return result;
     }
 
+    /** מסיר קידומת data-URL ורווחים — בלי זה atob נכשל והבלוב נשאר ריק */
+    function normalizeBase64ForUpload(raw) {
+        if (!raw || typeof raw !== 'string') return '';
+        let s = raw.trim().replace(/\s/g, '');
+        const m = s.match(/^data:[^;]+;base64,(.+)$/i);
+        if (m) s = m[1];
+        return s;
+    }
+
     function base64ToBlob(base64, mimeType) {
-        const bin = atob(base64);
+        const clean = normalizeBase64ForUpload(base64);
+        if (!clean) return new Blob([], { type: mimeType || 'image/jpeg' });
+        const bin = atob(clean);
         const len = bin.length;
         const arr = new Uint8Array(len);
         for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
