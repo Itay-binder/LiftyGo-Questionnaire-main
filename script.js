@@ -1135,9 +1135,11 @@ if(currentStep === 1){
         const isSmallMove = (payload.move_type === 'הובלה קטנה');
 
         if (isSmallMove) {
-            document.querySelectorAll('.mmw-items .row').forEach((row, index) => {
-                const itemName = formData.get(`item_name_${index}`);
-                const itemQty = formData.get(`item_qty_${index}`);
+            document.querySelectorAll('.mmw-items .row').forEach((row, rowIdx) => {
+                const nameInput = row.querySelector('input[name^="item_name_"]');
+                const qtySelect = row.querySelector('select[name^="item_qty_"]');
+                const itemName = nameInput ? nameInput.value.trim() : '';
+                const itemQty = qtySelect ? qtySelect.value : '';
                 if (!itemName || !itemQty) return;
 
                 const rowImages = Array.isArray(row._itemImages) ? row._itemImages : [];
@@ -1154,7 +1156,7 @@ if(currentStep === 1){
                 };
 
                 console.log('[Collect Payload] Item row:', {
-                    index,
+                    rowIdx,
                     itemName,
                     itemQty,
                     imageCount: images.length
@@ -1226,29 +1228,29 @@ if(currentStep === 1){
             drive_files_count: payload.drive_files_count
         });
 
-        const itemsListForWebhook = Array.isArray(payload.items_list)
-            ? payload.items_list.map((it) => ({
-                name: it.name,
-                quantity: it.quantity,
-                image_count: Array.isArray(it.images)
-                    ? it.images.length
-                    : (it.image_base64 ? 1 : 0)
-            }))
-            : payload.items_list;
+        const payloadForWebhook = { ...payload };
+        delete payloadForWebhook.items_list;
 
-        const payloadForWebhook = { ...payload, items_list: itemsListForWebhook };
+        let bodyString;
+        try {
+            bodyString = JSON.stringify(payloadForWebhook);
+        } catch (err) {
+            console.error('[Send Data] JSON.stringify נכשל (payload לוובהוק):', err);
+            return;
+        }
         
         try {
             const response = await fetch('https://hook.us1.make.com/wgko3er3c8r5mz8vv9llqwjza49jedfm', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payloadForWebhook)
+                body: bodyString
             });
             
             if (response.ok) {
                 console.log('[Send Data] Successfully sent to Make webhook');
             } else {
-                console.error('[Send Data] Failed to send to Make webhook, status:', response.status);
+                const errText = await response.text().catch(() => '');
+                console.error('[Send Data] Failed to send to Make webhook, status:', response.status, errText ? errText.slice(0, 500) : '');
             }
         } catch (e) {
             console.error("שגיאה בשליחה ל-Make:", e);
@@ -1470,7 +1472,8 @@ if(currentStep === 1){
             });
         }
         
-        console.log('[Form Submit] Final payload:', payload);
+        console.log('[Form Submit] Final payload keys:', Object.keys(payload), 'items_list length:',
+            Array.isArray(payload.items_list) ? payload.items_list.length : 'n/a');
         
         loaderSubtitle.textContent = 'שולחים את פרטי ההזמנה שלך למובילים מומלצים.';
         await sendData(payload);
