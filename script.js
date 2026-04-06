@@ -12,7 +12,7 @@ d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))
 })
 ({ key: "AIzaSyBHPpbK5_Otha3gRC7n7sWwgnkIhyUC_uA", v: "weekly", language: "he", region: "IL" });
 
-document.addEventListener('DOMContentLoaded', () => {
+function liftygoMmwInit() {
    
     // === UTM Injection ===
 (function () {
@@ -36,6 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const steps = document.querySelectorAll('.mmw-step');
     const progressBar = document.getElementById('mmwBar');
     const loader = document.getElementById('mmwLoader');
+    if (!form || !progressBar || !loader || steps.length === 0) {
+        console.error('[LIFTYGO] חסר אלמנט חיוני (mmwForm, mmwBar, mmwLoader או .mmw-step). בדוק הטמעת HTML.');
+        return;
+    }
     const loaderTitle = document.getElementById('loaderTitle');
     const loaderSubtitle = document.getElementById('loaderSubtitle');
     const itemsContainer = document.getElementById('mmwItems');
@@ -295,7 +299,8 @@ if(currentStep === 1){
 
     /** עדכון סרגל ההתקדמות */
     const updateProgress = () => {
-        const percent = (currentStep - 1) / (totalSteps - 1) * 100;
+        const denom = Math.max(1, totalSteps - 1);
+        const percent = ((currentStep - 1) / denom) * 100;
         progressBar.style.width = `${percent}%`;
     };
 
@@ -809,16 +814,17 @@ if(currentStep === 1){
     }
 
     // === Google Drive Upload (Cloud Run — multipart) ===
-    const DRIVE_UPLOAD_API_URL =
-        (typeof window !== 'undefined' && window.LIFTYGO_DRIVE_UPLOAD_URL) || '';
-    const DRIVE_UPLOAD_API_KEY =
-        (typeof window !== 'undefined' && window.LIFTYGO_DRIVE_UPLOAD_API_KEY) || '';
-    
+    // נקראים בזמן ההעלאה (לא בטעינת הקובץ) כדי שלא יאבדו URL/API אם מגדירים אותם אחרי script.js
+
     /**
      * יצירת תיקייה והעלאת תמונות ל-Google Drive דרך Cloud Run (multipart — בלי JSON+Base64 כבד)
      */
     const createFolderAndUploadToDrive = async (customerName, orderDate, files) => {
-        if (!DRIVE_UPLOAD_API_URL) {
+        const uploadUrl =
+            (typeof window !== 'undefined' && window.LIFTYGO_DRIVE_UPLOAD_URL) || '';
+        const uploadApiKey =
+            (typeof window !== 'undefined' && window.LIFTYGO_DRIVE_UPLOAD_API_KEY) || '';
+        if (!uploadUrl) {
             console.error('[Drive Upload] חסרה window.LIFTYGO_DRIVE_UPLOAD_URL (כתובת Cloud Run, נתיב /upload)');
             return null;
         }
@@ -839,19 +845,30 @@ if(currentStep === 1){
         const fd = new FormData();
         fd.append('customer_name', customerName);
         fd.append('order_date', orderDate);
+        let appended = 0;
         validFiles.forEach((f) => {
-            fd.append('files', base64ToBlob(f.base64, f.mime_type), f.filename);
+            const blob = base64ToBlob(f.base64, f.mime_type);
+            if (!blob || blob.size === 0) {
+                console.error('[Drive Upload] Blob ריק אחרי base64 — דלג על קובץ', f.filename);
+                return;
+            }
+            fd.append('files', blob, f.filename);
+            appended += 1;
         });
-
-        const headers = {};
-        if (DRIVE_UPLOAD_API_KEY) {
-            headers['X-Api-Key'] = DRIVE_UPLOAD_API_KEY;
+        if (appended === 0) {
+            console.error('[Drive Upload] אין קבצים תקפים להעלאה (כל ה-Blobים ריקים)');
+            return null;
         }
 
-        console.log('[Drive Upload] Multipart upload', { url: DRIVE_UPLOAD_API_URL, fileCount: validFiles.length });
+        const headers = {};
+        if (uploadApiKey) {
+            headers['X-Api-Key'] = uploadApiKey;
+        }
+
+        console.log('[Drive Upload] Multipart upload', { url: uploadUrl, fileCount: validFiles.length });
 
         try {
-            const response = await fetch(DRIVE_UPLOAD_API_URL, {
+            const response = await fetch(uploadUrl, {
                 method: 'POST',
                 body: fd,
                 headers
@@ -1080,14 +1097,16 @@ if(currentStep === 1){
             console.error('[Send Data] JSON.stringify נכשל (payload לוובהוק):', err);
             return;
         }
-        
+
+        const webhookUrl = 'https://hook.us1.make.com/wgko3er3c8r5mz8vv9llqwjza49jedfm';
+
         try {
-            const response = await fetch('https://hook.us1.make.com/wgko3er3c8r5mz8vv9llqwjza49jedfm', {
+            const response = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: bodyString
+                body: bodyString,
             });
-            
+
             if (response.ok) {
                 console.log('[Send Data] Successfully sent to Make webhook');
             } else {
@@ -1095,7 +1114,7 @@ if(currentStep === 1){
                 console.error('[Send Data] Failed to send to Make webhook, status:', response.status, errText ? errText.slice(0, 500) : '');
             }
         } catch (e) {
-            console.error("שגיאה בשליחה ל-Make:", e);
+            console.error('שגיאה בשליחה ל-Make:', e);
         }
     };
     
@@ -1118,9 +1137,10 @@ if(currentStep === 1){
           // =========================
           // 🔹 PREPARE META DATA
           // =========================
-          const eventId = crypto.randomUUID
-          ? crypto.randomUUID()
-          : 'eid-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+          const eventId =
+            typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+              ? crypto.randomUUID()
+              : 'eid-' + Date.now() + '-' + Math.random().toString(16).slice(2);
           setField(form, 'event_id', eventId);
           sessionStorage.setItem('liftygo_event_id', eventId);
           document.cookie = 'liftygo_event_id=' + encodeURIComponent(eventId) + '; path=/; max-age=7200';
@@ -1320,10 +1340,9 @@ if(currentStep === 1){
         loaderSubtitle.textContent = 'שולחים את פרטי ההזמנה שלך למובילים מומלצים.';
         await sendData(payload);
 
-        await new Promise(resolve => setTimeout(resolve, 3000)); 
-
         const eid = payload.event_id || sessionStorage.getItem('liftygo_event_id') || '';
         const tnxUrl = 'https://liftygo.co.il/tnx' + (eid ? '/?event_id=' + encodeURIComponent(eid) : '');
+        loaderSubtitle.textContent = 'מעבירים אותך לדף התודה...';
         window.location.href = tnxUrl;
     });
 
@@ -1482,4 +1501,10 @@ dropoffInput.addEventListener('input', () => {
 
 
     updateProgress();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', liftygoMmwInit);
+} else {
+    liftygoMmwInit();
+}

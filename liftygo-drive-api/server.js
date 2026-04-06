@@ -4,7 +4,77 @@ const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
 const { google } = require('googleapis');
-const { Readable } = require('stream');
+
+const DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3/files';
+
+/**
+ * העלאת קובץ בינארי ללא multipart של googleapis (שם מסלול pipe שבור עם חלק מהזרמים).
+ * Resumable: POST לאתחול + PUT של Buffer — תואם Drive API v3.
+ */
+async function uploadFileResumable(auth, folderId, name, mimeType, buffer) {
+  const client = await auth.getClient();
+  const authHeaders = await client.getRequestHeaders(DRIVE_UPLOAD_BASE);
+  const buf = Buffer.from(buffer);
+  const meta = JSON.stringify({
+    name,
+    parents: [folderId],
+    mimeType: mimeType || 'image/jpeg',
+  });
+
+  const initUrl = `${DRIVE_UPLOAD_BASE}?uploadType=resumable&fields=id&supportsAllDrives=true`;
+  const initRes = await fetch(initUrl, {
+    method: 'POST',
+    headers: {
+      ...authHeaders,
+      'Content-Type': 'application/json; charset=UTF-8',
+      'X-Upload-Content-Type': mimeType || 'image/jpeg',
+      'X-Upload-Content-Length': String(buf.length),
+    },
+    body: meta,
+  });
+
+  if (!initRes.ok) {
+    const errText = await initRes.text();
+    throw new Error(`Drive resumable init ${initRes.status}: ${errText.slice(0, 800)}`);
+  }
+
+  const location = initRes.headers.get('Location') || initRes.headers.get('location');
+  if (!location) {
+    throw new Error('Drive resumable: missing Location header');
+  }
+
+  const putRes = await fetch(location, {
+    method: 'PUT',
+    headers: {
+      'Content-Length': String(buf.length),
+      'Content-Type': mimeType || 'image/jpeg',
+    },
+    body: buf,
+  });
+
+  if (!putRes.ok) {
+    const errText = await putRes.text();
+    throw new Error(`Drive resumable PUT ${putRes.status}: ${errText.slice(0, 800)}`);
+  }
+
+  const putText = await putRes.text();
+  let data = {};
+  try {
+    data = putText ? JSON.parse(putText) : {};
+  } catch (_e) {
+    throw new Error(`Drive resumable PUT: expected JSON, got: ${putText.slice(0, 200)}`);
+  }
+  if (!data.id) {
+    throw new Error('Drive resumable PUT: missing id in response');
+  }
+  return data.id;
+}
+
+/** שם קובץ בטוח ASCII ל-Drive (שמות עבריים לפעמים גורמים לבעיות במטא־דאטה אצל לקוחות מסוימים) */
+function safeFileName(name) {
+  const base = (name || 'image.jpg').toString().replace(/[\\/:*?"<>|\u0000-\u001F]/g, '_').trim() || 'image.jpg';
+  return base.slice(0, 200);
+}
 
 const app = express();
 const upload = multer({
@@ -36,6 +106,13 @@ app.post('/upload', upload.array('files', 40), async (req, res) => {
     const files = req.files || [];
     if (!files.length) {
       return res.status(400).json({ error: 'No files' });
+    }
+    for (const f of files) {
+      const sz = f.buffer ? f.buffer.length : 0;
+      if (!sz) {
+        console.error('Reject upload: empty file buffer', f.originalname, f.mimetype);
+        return res.status(400).json({ error: 'Empty file upload', name: f.originalname || '' });
+      }
     }
 
     const customerName = String(req.body.customer_name || 'לקוח').slice(0, MAX_FIELD);
@@ -71,24 +148,40 @@ app.post('/upload', upload.array('files', 40), async (req, res) => {
       folderMeta.parents = [parentId];
     }
 
+    const driveOpts = { supportsAllDrives: true };
+
     const folder = await drive.files.create({
       requestBody: folderMeta,
       fields: 'id',
+      ...driveOpts,
     });
     const folderId = folder.data.id;
 
+    const uploadedFileIds = [];
+    const fileErrors = [];
+
     for (const f of files) {
-      const mime = f.mimetype || 'image/jpeg';
-      await drive.files.create({
-        requestBody: {
-          name: (f.originalname || 'image.jpg').toString().slice(0, 200),
-          parents: [folderId],
-        },
-        media: {
-          mimeType: mime,
-          body: Readable.from(f.buffer),
-        },
-        fields: 'id',
+      const mime = (f.mimetype || 'image/jpeg').toString();
+      const name = safeFileName(f.originalname || 'image.jpg');
+      try {
+        const fileId = await uploadFileResumable(auth, folderId, name, mime, f.buffer);
+        if (fileId) uploadedFileIds.push(fileId);
+      } catch (fileErr) {
+        const msg = fileErr.message || String(fileErr);
+        console.error('Drive upload failed:', name, f.buffer ? f.buffer.length : 0, 'bytes', msg);
+        fileErrors.push({ name, error: msg, details: null });
+      }
+    }
+
+    if (uploadedFileIds.length === 0) {
+      try {
+        await drive.files.delete({ fileId: folderId, ...driveOpts });
+      } catch (delErr) {
+        console.error('Could not delete empty folder', folderId, delErr.message || delErr);
+      }
+      return res.status(500).json({
+        error: 'No files could be uploaded to Drive',
+        file_errors: fileErrors,
       });
     }
 
@@ -96,8 +189,9 @@ app.post('/upload', upload.array('files', 40), async (req, res) => {
       success: true,
       folder_id: folderId,
       folder_url: `https://drive.google.com/drive/folders/${folderId}`,
-      files_count: files.length,
+      files_count: uploadedFileIds.length,
       folder_name: folderName,
+      failed_count: fileErrors.length,
     });
   } catch (err) {
     console.error(err);
