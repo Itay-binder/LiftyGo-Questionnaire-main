@@ -15,10 +15,11 @@ async function uploadFileResumable(auth, folderId, name, mimeType, buffer) {
   const client = await auth.getClient();
   const authHeaders = await client.getRequestHeaders(DRIVE_UPLOAD_BASE);
   const buf = Buffer.from(buffer);
+  const mime = mimeType || 'image/jpeg';
+  // מטא־דאטה בלבד; mime של הקובץ נשלח ב-X-Upload-Content-Type וב-PUT
   const meta = JSON.stringify({
     name,
     parents: [folderId],
-    mimeType: mimeType || 'image/jpeg',
   });
 
   const initUrl = `${DRIVE_UPLOAD_BASE}?uploadType=resumable&fields=id&supportsAllDrives=true`;
@@ -27,7 +28,7 @@ async function uploadFileResumable(auth, folderId, name, mimeType, buffer) {
     headers: {
       ...authHeaders,
       'Content-Type': 'application/json; charset=UTF-8',
-      'X-Upload-Content-Type': mimeType || 'image/jpeg',
+      'X-Upload-Content-Type': mime,
       'X-Upload-Content-Length': String(buf.length),
     },
     body: meta,
@@ -46,8 +47,9 @@ async function uploadFileResumable(auth, folderId, name, mimeType, buffer) {
   const putRes = await fetch(location, {
     method: 'PUT',
     headers: {
+      ...authHeaders,
       'Content-Length': String(buf.length),
-      'Content-Type': mimeType || 'image/jpeg',
+      'Content-Type': mime,
     },
     body: buf,
   });
@@ -91,6 +93,10 @@ function parseOrigins() {
 }
 
 app.use(cors({ origin: parseOrigins(), credentials: false }));
+
+app.get('/', (_req, res) => {
+  res.status(200).type('text/plain').send('liftygo-drive-api — use GET /health or POST /upload');
+});
 
 app.get('/health', (_req, res) => {
   res.status(200).type('text/plain').send('ok');
