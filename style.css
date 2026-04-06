@@ -396,11 +396,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 #mmwLoader p {
   color: var(--muted); font-size: 14px;
 }
-/*מסתיר את הכפתור איקומרס
-*/
-.ecom{
-    display: none;
-}
 /*
  * ==============================
  * 📱 MOBILE OPTIMIZATION

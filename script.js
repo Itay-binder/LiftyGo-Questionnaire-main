@@ -255,16 +255,6 @@ const generateOrderId = () => {
              return; 
         }
 
-        // ✨ הוספת לוגיקת דילוג עבור איקומרס (שלב 2 -> 4, דילוג על איסוף ויעד) ✨
-        if (currentStep === 2 && direction > 0 && moveType === 'איקומרס (חבילות)') {
-             nextStep = 4;
-        }
-        
-        // ✨ הוספת לוגיקת חזרה עבור איקומרס (שלב 4 -> 2) ✨
-        if (currentStep === 4 && direction < 0 && moveType === 'איקומרס (חבילות)') {
-             nextStep = 2;
-        }
-        
         if (nextStep < 1 || nextStep > totalSteps) return;
 
         steps[currentStep - 1].classList.remove('active');
@@ -288,11 +278,11 @@ if(currentStep === 1){
         
         updateProgress();
         
-        // Initialize items step when entering step 4 (only for small moves/e-commerce)
+        // Initialize items step when entering step 4 (only for small moves)
         // Do this after step visibility is set to prevent visual glitches
         if (currentStep === 4) {
-            const isSmallMoveOrEcommerce = (moveType === 'הובלה קטנה' || moveType === 'איקומרס (חבילות)');
-            if (isSmallMoveOrEcommerce) {
+            const isSmallMove = (moveType === 'הובלה קטנה');
+            if (isSmallMove) {
                 // Use requestAnimationFrame to ensure step is fully rendered
                 requestAnimationFrame(() => {
                     initializeItemsStep();
@@ -305,40 +295,26 @@ if(currentStep === 1){
 
     /** עדכון סרגל ההתקדמות */
     const updateProgress = () => {
-        // ✨ לוגיקת חישוב מעודכנת להתחשבות בדילוג איקומרס (שלבים 2 ו-3 - איסוף ויעד) ✨
-        let visualTotalSteps = totalSteps; 
-        let visualCurrentStep = currentStep;
-        
-        if (moveType === 'איקומרס (חבילות)') {
-             visualTotalSteps = totalSteps - 2; // 5 -> 3 (דילוג על שלבים 2 ו-3)
-             if (visualCurrentStep > 3) {
-                 visualCurrentStep -= 2; // שלב 4 הופך ל-2, 5 ל-3
-             } else if (visualCurrentStep > 1) {
-                 visualCurrentStep = 2; 
-             }
-        }
-        
-        const percent = (visualCurrentStep - 1) / (visualTotalSteps - 1) * 100; 
+        const percent = (currentStep - 1) / (totalSteps - 1) * 100;
         progressBar.style.width = `${percent}%`;
     };
 
-    /** שינוי תוכן שלב 4 בהתאם לבחירה (דירה/קטנה/איקומרס) */
+    /** שינוי תוכן שלב 4 בהתאם לבחירה (דירה/קטנה) */
     const toggleContentStep = (type) => {
         const step = document.querySelector('[data-step="4"]');
         const smallMoveElements = step.querySelectorAll('.small-move');
         const apartmentMoveElement = step.querySelector('.apartment-move');
         
-        // ✨ הרחבת הלוגיקה כדי לכלול גם איקומרס כ"הובלה קטנה" ✨
-        const isSmallMoveOrEcommerce = (type === 'הובלה קטנה' || type === 'איקומרס (חבילות)');
+        const isSmallMove = (type === 'הובלה קטנה');
 
-        smallMoveElements.forEach(el => el.style.display = isSmallMoveOrEcommerce ? '' : 'none');
-        apartmentMoveElement.style.display = isSmallMoveOrEcommerce ? 'none' : '';
+        smallMoveElements.forEach(el => el.style.display = isSmallMove ? '' : 'none');
+        apartmentMoveElement.style.display = isSmallMove ? 'none' : '');
         
         const cartonsSelect = apartmentMoveElement.querySelector('select[name="cartons"]');
         const firstItemInput = step.querySelector('.small-move [name="item_name_0"]');
         
         // עדכון ה-Required
-        if (isSmallMoveOrEcommerce) {
+        if (isSmallMove) {
             cartonsSelect.removeAttribute('required');
             if (firstItemInput) firstItemInput.setAttribute('required', true); 
         } else {
@@ -545,10 +521,9 @@ if(currentStep === 1){
     }
   }
         
-        // ✨ עדכון ולידציה לכלול איקומרס יחד עם קטנה ✨
-        const isSmallMoveOrEcommerce = (moveType === 'הובלה קטנה' || moveType === 'איקומרס (חבילות)');
+        const isSmallMove = (moveType === 'הובלה קטנה');
 
-        if (step === 4 && isSmallMoveOrEcommerce) {
+        if (step === 4 && isSmallMove) {
             const itemNames = currentStepElement.querySelectorAll('.small-move [name^="item_name_"]');
             const hasValidItem = Array.from(itemNames).some(input => input.value.trim() !== '');
             if (!hasValidItem) {
@@ -1058,6 +1033,7 @@ if(currentStep === 1){
         payload.name = formData.get('name');
         payload.phone = formData.get('phone');
         payload.notes = formData.get('notes'); payload.what_moving = formData.get('what_moving') || '';
+        payload.terms_approved = formData.get('terms_approved') || '';
 
         payload.utm_source = formData.get('utm_source');
         payload.utm_medium = formData.get('utm_medium');
@@ -1087,10 +1063,9 @@ if(currentStep === 1){
         payload.drop_access = payload.drop_type === 'בית קרקע' ? 'לא רלוונטי' : getAccessValue('drop_access');
 
         // איסוף פריטים או קרטונים בהתאם לסוג ההובלה
-        // ✨ עדכון הלוגיקה כדי לכלול גם איקומרס ✨
-        const isSmallMoveOrEcommerce = (payload.move_type === 'הובלה קטנה' || payload.move_type === 'איקומרס (חבילות)');
+        const isSmallMove = (payload.move_type === 'הובלה קטנה');
 
-        if (isSmallMoveOrEcommerce) {
+        if (isSmallMove) {
             document.querySelectorAll('.mmw-items .row').forEach((row, index) => {
                 const itemName = formData.get(`item_name_${index}`);
                 const itemQty = formData.get(`item_qty_${index}`);
@@ -1198,16 +1173,6 @@ if(currentStep === 1){
             payload.items_list = items;
             payload.items_text = items.map(i => `${i.quantity} יח' - ${i.name}`).join(' | ');
             payload.cartons = 'לא רלוונטי';
-
-            // ✨ איפוס נתוני גישה עבור איקומרס ✨
-            if (payload.move_type === 'איקומרס (חבילות)') {
-                payload.pickup_type = 'איקומרס - מחסן';
-                payload.pickup_floor = 'קרקע';
-                payload.pickup_access = 'לא רלוונטי';
-                payload.drop_type = 'איקומרס - לקוח';
-                payload.drop_floor = 'לא ידוע';
-                payload.drop_access = 'לא רלוונטי';
-            }
         } else { // דירה (גדולה)
             payload.cartons = formData.get('cartons');
             const cartonsValue = payload.cartons;
@@ -1235,7 +1200,7 @@ if(currentStep === 1){
         return payload;
     };
 
-    /** שליחת הנתונים ל-Make ול-Responder */
+    /** שליחת הנתונים לוובהוק Make */
     const sendData = async (payload) => {
         // נוודא שהשדות תמיד קיימים (אם לא, נוסיף אותם עם ערכים ריקים)
         if (typeof payload.drive_folder_url === 'undefined') {
@@ -1283,27 +1248,6 @@ if(currentStep === 1){
             }
         } catch (e) {
             console.error("שגיאה בשליחה ל-Make:", e);
-        }
-
-        try {
-            const r = new URLSearchParams();
-            r.append('fname', payload.name);
-            r.append('phone', payload.phone);
-            r.append('custom_3', payload.items_text); 
-            r.append('custom_4', payload.date);
-            r.append('custom_5', payload.pickup + ' > ' + payload.dropoff); 
-            r.append('form_id', '2810431');
-            r.append('action', 'subscribe');
-            r.append('list', '1'); 
-
-            await fetch('https://subscribe.responder.co.il', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                body: r.toString(),
-                mode: 'no-cors'
-            });
-        } catch (e) {
-            console.error("שגיאה בשליחה ל-Responder:", e);
         }
     };
     
@@ -1353,10 +1297,10 @@ if(currentStep === 1){
         const payload = collectPayload();
         
         // העלאת תמונות/סרטונים לגוגל דרייב לפני שליחת הטופס
-        const isSmallMoveOrEcommerce = (payload.move_type === 'הובלה קטנה' || payload.move_type === 'איקומרס (חבילות)');
+        const isSmallMove = (payload.move_type === 'הובלה קטנה');
         let driveFolderInfo = null;
         
-        if (isSmallMoveOrEcommerce && payload.items_list && Array.isArray(payload.items_list)) {
+        if (isSmallMove && payload.items_list && Array.isArray(payload.items_list)) {
             console.log('[Form Submit] Items list:', payload.items_list);
             
             // איסוף כל הקבצים להעלאה
