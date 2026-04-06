@@ -1,0 +1,457 @@
+/**
+ * ==============================
+ * 🎨 MoveMe Wizard CSS - Organized Version (Rubik Font)
+ * ==============================
+ */
+
+/* === 1. TOKENS & BASE STYLES === */
+:root{
+  --bg:#f7f7fb;
+  --surface:#fff;
+  --text:#2D2152; /* צבע טקסט ראשי (שחור/כחול כהה) */
+  --muted:#2D2152;
+  --line:#e5e7eb;
+  --brand:#a379e7;
+  --brand-2:#6023c0;
+  --accent:#f59e0b;
+  --danger:#ef4444;
+  --radius:18px;
+  --shadow-m:0 10px 30px rgba(2,6,23,.10);
+}
+
+body{
+  font-family:'Rubik',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Noto Sans',sans-serif; 
+  direction:rtl;
+}
+
+/* === 2. WIZARD STRUCTURE & PROGRESS === */
+.mmw-card{
+  background:var(--surface); 
+  border:1px solid var(--line); 
+  border-radius:var(--radius); 
+  box-shadow:var(--shadow-m); 
+  padding:18px;
+  position: relative; 
+}
+.mmw-card h3 {
+  font-size:22px; 
+  margin-bottom:14px; 
+  color:var(--text); 
+  font-weight: 700;
+  transition: all .2s ease; 
+} 
+.mmw-progress{
+  height:8px;
+  background:#e5daf8;
+  border-radius:999px;
+  margin-bottom:14px;
+  overflow:hidden;
+}
+.mmw-progress i{
+  display:block;
+  height:100%;
+  background:linear-gradient(135deg,var(--brand),var(--brand-2));
+  width:0%;
+  transition:width .35s cubic-bezier(.22,.61,.36,1);
+}
+
+.mmw-step{
+  display:none; 
+}
+.mmw-step.active{
+  display:block;
+}
+.mmw-note{
+  color:var(--muted); 
+  font-size:12px; 
+  text-align:center; 
+  margin-top:8px;
+}
+
+/* === 3. FIELDS & INPUTS === */
+.mmw-field{
+  display:grid; 
+  gap:6px; 
+  margin:10px 0;
+}
+.mmw-label{
+  font-size:1.2VW; 
+  color:var(--muted);
+  font-weight: 500;
+}
+@media (max-width: 768px){
+  .mmw-label{
+    font-size:3.5vw;
+  }
+}
+.mmw-input, .mmw-select, .mmw-textarea, input[type="date"], input[type="time"] {
+  width:100%; 
+  padding:12px; 
+  border-radius:12px; 
+  border:1px solid var(--line); 
+  background:#fff; 
+  font-size:15px; 
+  outline:none;
+  box-sizing:border-box; 
+  color:var(--text); 
+  position: relative;
+}
+.mmw-textarea{
+  min-height:70px; 
+  resize:vertical;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+/* === 4. CHIPS === */
+.mmw-checks{
+  display:flex; 
+  flex-wrap:wrap; 
+  gap:8px; 
+  margin-top:6px;
+}
+.mmw-chip{
+  display:inline-flex; 
+  align-items:center; 
+  text-align: center;
+  line-height: 1.3em;
+  gap:8px; 
+  padding:10px 14px; 
+  border-radius:999px; 
+  border:1px solid var(--line);
+  background:#fff; 
+  font-size:14PX; 
+  cursor:pointer; 
+  user-select:none; 
+  transition:all .2s ease;
+}
+.mmw-chip:active{
+  transform:scale(.98);
+}
+.mmw-chip-xl {
+    flex: 1 1 48%; 
+    padding: 16px 20px;
+    font-size: 1.4VW;
+    font-weight: 700;
+    justify-content: center;
+    border-radius: 14px;
+    background: #f9f6fd; 
+    border: 1px solid #d3bef4;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    color: var(--text); 
+}
+.mmw-chip-xl input {
+    display: none !important;
+}
+.mmw-chip-xl.active {
+    border-color:var(--brand); 
+    background:linear-gradient(135deg,var(--brand),var(--brand-2)); 
+    color:#062e17; 
+    box-shadow:0 4px 10px rgba(211,190,244,.3);
+}
+.mmw-chip input{
+  appearance:none; 
+  width:16px; 
+  height:16px; 
+  border:1.8px solid #c9d1d9; 
+  border-radius:50%; 
+  display:inline-block; 
+  position:relative;
+  transition:border-color .2s ease, background .2s ease;
+}
+.mmw-chip input[type="checkbox"]{
+  border-radius:6px;
+}
+.mmw-chip input:checked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    background: white; 
+    border-radius: 50%;
+}
+.mmw-chip:not(.mmw-chip-xl).active{
+  border-color:#c4b5fd; 
+  background:#f3e8ff;
+}
+.mmw-chip:not(.mmw-chip-xl).active input{
+  border-color:var(--brand); 
+  background:var(--brand);
+}
+
+
+/* === 5. ACTIONS & BUTTONS (תיקון צבע כפתור ghost) === */
+.mmw-actions{
+  display:flex; 
+  gap:10px; 
+  margin-top:12px;
+}
+.mmw-btn{
+  flex:1; 
+  padding:14px; 
+  border-radius:14px; 
+  font-weight:800; 
+  font-size:15px; 
+  cursor:pointer; 
+  border:0; 
+  transition:all .2s ease;
+}
+.mmw-primary{
+  background:linear-gradient(135deg,var(--brand),var(--brand-2)); 
+  color:#FFF; 
+  box-shadow:0 4px 14px rgba(211, 190, 244,.22);
+  border: none !important; 
+  outline: none !important; 
+}
+.mmw-primary:hover{
+  box-shadow: 0 0 10px rgba(211,190,244,.6), 0 4px 14px rgba(211,190,244,.35);
+  opacity: 0.95;
+}
+.mmw-primary:active{
+  transform:scale(.98);
+}
+
+.mmw-ghost {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text); 
+  transition: background 0.2s ease, border-color 0.2s ease; 
+  -webkit-tap-highlight-color: transparent; 
+  outline: none;
+}
+.mmw-ghost:hover { 
+  background: #f3e8ff; 
+  border-color: #c4b5fd; 
+  color: var(--text); 
+}
+.mmw-ghost:active {
+  transform:scale(.98); 
+  background: #f3e8ff; 
+  border-color: #c4b5fd;
+  box-shadow: none; 
+  outline: none;
+}
+
+.mmw-disabled{
+  opacity:.6; 
+  pointer-events:none;
+}
+#mmwAddItem {
+    border-color: var(--line); 
+    background: #f8fafc; 
+    color: var(--brand); 
+    font-weight: 700;
+}
+#mmwAddItem:hover {
+    background: #f0f4f7;
+    border-color: #dcdde3;
+}
+
+
+/* === 6. ITEM MANAGEMENT (שלב 5 - תיקון אייקון מצלמה) === */
+.mmw-items h3{
+  font-size:18px; 
+  margin-bottom:10px; 
+  color:var(--text);
+}
+.mmw-items .row{
+  display:flex; 
+  gap:8px; 
+  margin-top:8px; 
+  align-items:center; 
+  border:1px solid var(--line); 
+  padding:10px; 
+  border-radius:12px;
+  background: #fff;
+}
+.mmw-items .row input[type="text"]{
+  flex:2; 
+  order:1; 
+  margin-left:auto;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  font-size: 14px;
+}
+.mmw-items .row select{
+  width:60px; 
+  order:2;
+  padding: 10px 5px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  text-align: center;
+}
+
+.mmw-items .row .img-wrap{
+  order:3; 
+  position:relative;
+}
+.mmw-items .row .img-btn{
+  display:inline-flex; 
+  align-items:center; 
+  justify-content:center;
+  width:38px; 
+  height:38px; 
+  border-radius:10px; 
+  border: 0; 
+  background: #f3e8ff;
+  color: var(--brand); /* צבע כללי לכפתור */
+  cursor:pointer;
+  transition: all .2s ease;
+}
+.mmw-items .row .img-btn i.fa-camera { /* סלקטור חדש לאייקון Font Awesome */
+    color: var(--brand) !important; 
+    font-size: 16px;
+    /* ✨ הוסף את שני המאפיינים הקריטיים האלה ✨ */
+    font-family: "Font Awesome 6 Solid" !important;
+    font-weight: 900 !important; /* משקל הנדרש לסמלים מוצקים */
+}
+
+.mmw-items .row .img-btn:hover {
+  background: #e9d5ff;
+}
+.mmw-items .row img.preview{
+  width:38px; 
+  height:38px; 
+  border-radius:10px; 
+  object-fit:cover; 
+  border:1px solid var(--line); 
+  display:none;
+}
+.mmw-items .row .del {
+  padding: 6px 8px;
+  border: 0; 
+  background: none; 
+  color: var(--danger);
+  cursor: pointer;
+  order:4; 
+  margin-left:auto;
+  transition: background 0.2s ease; 
+}
+.mmw-items .row .del:hover {
+  background: #fef2f2; 
+}
+
+/* === 7. LOADER (מסך טעינה) === */
+#mmwLoader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  display: none; 
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: var(--radius);
+  z-index: 100;
+  text-align: center;
+  padding: 30px;
+}
+#mmwLoader.show.quick-load {
+    transition: opacity 0.2s ease;
+}
+
+#mmwLoader.show {display: flex;}
+#mmwLoader .truck {
+  width: 80px; height: 40px;
+  background: linear-gradient(135deg,var(--brand),var(--brand-2));
+  border-radius: 5px; position: relative; margin-bottom: 20px;
+  animation: moveTruck 3s infinite ease-in-out;
+}
+#mmwLoader.show.quick-load .truck {
+    animation: none;
+}
+
+
+#mmwLoader .truck:before, #mmwLoader .truck:after {
+  content: ''; position: absolute; bottom: -10px;
+  width: 12px; height: 12px;
+  background: var(--text); border-radius: 50%;
+}
+#mmwLoader .truck:before { left: 10px; }
+#mmwLoader .truck:after { right: 10px; }
+
+@keyframes moveTruck {
+  0% { transform: translateX(-50px); opacity: 0.5; }
+  50% { transform: translateX(50px); opacity: 1; }
+  100% { transform: translateX(-50px); opacity: 0.5; }
+}
+
+#mmwLoader h2 {
+  color: var(--brand); font-size: 20px; margin-bottom: 5px;
+}
+#mmwLoader p {
+  color: var(--muted); font-size: 14px;
+}
+/*מסתיר את הכפתור איקומרס
+*/
+.ecom{
+    display: none;
+}
+/*
+ * ==============================
+ * 📱 MOBILE OPTIMIZATION
+ * ==============================
+ */
+
+@media (max-width: 600px) {
+    .mmw-card {
+        padding: 12px; 
+    }
+    
+    .mmw-items .row .img-btn {
+        width: 34px;
+        height: 34px;
+    }
+    .mmw-chip-xl {
+    flex: 1 1 48%; 
+    padding: 16px 20px;
+    font-size: 4VW;
+    font-weight: 700;
+    justify-content: center;
+    border-radius: 14px;
+    background: #f9f6fd; 
+    border: 1px solid #d3bef4;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    color: var(--text); 
+}
+}
+/* === ICON + TEXT LAYOUT === */
+.chip-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* גודל האייקונים */
+.chip-icon {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+}
+
+/* שינוי פריסת האייקון במובייל */
+@media (max-width: 700px) {
+  .chip-content {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .chip-icon {
+    width: 56px;
+    height: 56px;
+  }
+}

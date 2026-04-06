@@ -1,0 +1,364 @@
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDpQ/WwYvLqKfwRjA0i7rGf+A/fC3g01J04e6+1y3zE3+x3/h5B3bL6o3W3O3Z03w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<style>
+  .mmw-terms-wrap { margin: 10px 0 14px; }
+  .mmw-terms {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+  }
+  .mmw-terms input[type="checkbox"] { margin-top: 3px; }
+  .mmw-terms-label { line-height: 1.45; font-size: 14px; color: #0f172a; }
+  .mmw-terms-link {
+    color: #0ea5e9;
+    text-decoration: underline;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    font: inherit;
+  }
+  .mmw-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 16px;
+  }
+  .mmw-modal-overlay.open { display: flex; }
+  .mmw-modal {
+    width: min(860px, 100%);
+    height: min(85vh, 760px);
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(2, 6, 23, 0.25);
+    display: flex;
+    flex-direction: column;
+  }
+  .mmw-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+  }
+  .mmw-modal-title { font-size: 14px; font-weight: 700; color: #0f172a; }
+  .mmw-modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid #d6bcfa;
+    background: #faf5ff;
+    color: #7c3aed;
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+  }
+  .mmw-modal-close:hover {
+    background: #7c3aed;
+    border-color: #7c3aed;
+    color: #fff;
+  }
+  .mmw-modal-iframe { width: 100%; height: 100%; border: 0; }
+  .mmw-modal-foot {
+    border-top: 1px solid #e2e8f0;
+    padding: 8px 12px;
+    font-size: 13px;
+    text-align: left;
+  }
+</style>
+
+<aside class="mmw-card" id="book" dir="rtl" style="position:relative">
+  
+  <div id="mmwLoader">
+    <div class="truck"></div>
+    <h2 id="loaderTitle">המשך לשלב הבא...</h2> 
+    <p id="loaderSubtitle">מעבר מהיר לפרטי גישה</p>
+  </div>
+  
+  <div class="mmw-progress"><i id="mmwBar"></i></div>
+
+  <form id="mmwForm" novalidate>
+      <!-- Meta / CAPI -->
+<input type="hidden" name="fbp">
+<input type="hidden" name="fbc">
+<input type="hidden" name="event_id">
+<input type="hidden" name="fbclid">
+    <!-- UTM hidden fields -->
+<input type="hidden" name="utm_source">
+<input type="hidden" name="utm_medium">
+<input type="hidden" name="utm_campaign">
+<input type="hidden" name="utm_content">
+
+
+    <div class="mmw-step active" data-step="1">
+      <h3>בחר סוג הובלה</h3>
+      <div class="mmw-field">
+       
+        <div class="mmw-checks" data-group="move_type">
+          <label class="mmw-chip mmw-chip-xl" data-type="single" data-auto-next>
+              <input type="radio" name="move_type" value="הובלה קטנה" required/> <span class="chip-content">
+    <img src="https://binder.co.il/wp-content/uploads/2026/01/ככה-תעשה-את-עסקת-הנדלן-הבאה-שלך-תוך-90-ימים-מהיום-4.png" class="chip-icon">
+    הובלה קטנה
+  </span>️
+          </label>
+          <label class="mmw-chip mmw-chip-xl" data-type="apartment" data-auto-next>
+              <input type="radio" name="move_type" value="הובלת דירה" required/> <span class="chip-content">
+    <img src="https://binder.co.il/wp-content/uploads/2026/01/ככה-תעשה-את-עסקת-הנדלן-הבאה-שלך-תוך-90-ימים-מהיום-5.png" class="chip-icon">
+    הובלת דירה
+  </span>
+          </label>
+           <label class="mmw-chip mmw-chip-xl ecom" data-type="ecommerce" data-auto-next>
+            <input class="ecom" type="radio" name="move_type" value="איקומרס (חבילות)"  required>
+            <span >משלוח MoveMe איקומרס</span>
+        </label>
+        </div>
+      </div>
+      <div class="mmw-note">הובלת דירה כוללת סלון, חדרי שינה, מטבח וארגזים. הובלה קטנה היא פריטים בודדים בלבד.</div>
+    </div>
+    
+    <div class="mmw-step" data-step="2">
+      <h3>איסוף</h3>
+      <div class="mmw-field">
+        <label class="mmw-label">כתובת איסוף</label>
+        <input class="mmw-input" name="pickup" placeholder="כתובת איסוף" required />
+      </div>
+      <div class="mmw-field" data-section="property-type">
+        <label class="mmw-label">סוג נכס (איסוף)</label>
+        <div class="mmw-checks" data-group="pickup_type">
+          <label class="mmw-chip"><input type="radio" name="pickup_type" value="בית קרקע" data-access-control="hide" /> בית קרקע</label>
+          <label class="mmw-chip"><input type="radio" name="pickup_type" value="בניין" data-access-control="show" /> בניין</label>
+        </div>
+      </div>
+
+      <div class="mmw-field" data-section="floor" data-type="building" style="display:none;"> 
+        <label class="mmw-label">קומה (איסוף)</label>
+        <select class="mmw-select" name="pickup_floor"></select>
+      </div>
+
+      <div class="mmw-field" data-section="access" data-type="building" style="display:none;"> 
+        <label class="mmw-label">נגישות (איסוף)</label>
+        <div class="mmw-checks" data-group="pickup_access">
+          <label class="mmw-chip"><input type="radio" name="pickup_access" value="מעלית (פריט נכנס)" /> מעלית (פריט נכנס)</label>
+          <label class="mmw-chip"><input type="radio" name="pickup_access" value="מעלית קטנה (פריט לא נכנס)" /> מעלית קטנה (פריט לא נכנס)</label>
+          <label class="mmw-chip"><input type="radio" name="pickup_access" value="מדרגות בלבד" /> מדרגות בלבד</label>
+          <label class="mmw-chip"><input type="radio" name="pickup_access" value="מספר מדרגות בכניסה" /> מספר מדרגות בכניסה</label>
+          <label class="mmw-chip"><input type="radio" name="pickup_access" value="שביל ארוך / כניסה לא ישירה" /> שביל ארוך / כניסה לא ישירה</label>
+          <label class="mmw-chip" data-free-text="pickup_access_other"><input type="radio" name="pickup_access" value="אחר" /> אחר</label>
+        </div>
+        <input class="mmw-input" type="text" name="pickup_access_other" placeholder="תיאור קצר" style="display:none; margin-top:5px" />
+      </div>
+
+      <div class="mmw-actions">
+        <button type="button" class="mmw-btn mmw-ghost" data-prev>הקודם</button>
+        <button type="button" class="mmw-btn mmw-primary" data-next data-target-step="3">המשך</button>
+      </div>
+    </div>
+
+    <div class="mmw-step" data-step="3">
+      <h3>יעד</h3>
+      <div class="mmw-field">
+        <label class="mmw-label">כתובת יעד</label>
+        <input class="mmw-input" name="dropoff" placeholder="כתובת יעד" required />
+      </div>
+      <div class="mmw-field" data-section="property-type">
+        <label class="mmw-label">סוג נכס (יעד)</label>
+        <div class="mmw-checks" data-group="drop_type">
+          <label class="mmw-chip"><input type="radio" name="drop_type" value="בית קרקע" data-access-control="hide" /> בית קרקע</label>
+          <label class="mmw-chip"><input type="radio" name="drop_type" value="בניין" data-access-control="show" /> בניין</label>
+        </div>
+      </div>
+
+      <div class="mmw-field" data-section="floor" data-type="building" style="display:none;">
+        <label class="mmw-label">קומה (יעד)</label>
+        <select class="mmw-select" name="drop_floor"></select>
+      </div>
+
+      <div class="mmw-field" data-section="access" data-type="building" style="display:none;">
+        <label class="mmw-label">נגישות (יעד)</label>
+        <div class="mmw-checks" data-group="drop_access">
+          <label class="mmw-chip"><input type="radio" name="drop_access" value="מעלית (פריט נכנס)" /> מעלית (פריט נכנס)</label>
+          <label class="mmw-chip"><input type="radio" name="drop_access" value="מעלית קטנה (פריט לא נכנס)" /> מעלית קטנה (פריט לא נכנס)</label>
+          <label class="mmw-chip"><input type="radio" name="drop_access" value="מדרגות בלבד" /> מדרגות בלבד</label>
+          <label class="mmw-chip"><input type="radio" name="drop_access" value="מספר מדרגות בכניסה" /> מספר מדרגות בכניסה</label>
+          <label class="mmw-chip"><input type="radio" name="drop_access" value="שביל ארוך / כניסה לא ישירה" /> שביל ארוך / כניסה לא ישירה</label>
+          <label class="mmw-chip" data-free-text="drop_access_other"><input type="radio" name="drop_access" value="אחר" /> אחר</label>
+        </div>
+        <input class="mmw-input" type="text" name="drop_access_other" placeholder="תיאור קצר" style="display:none; margin-top:5px" />
+      </div>
+
+      <div class="mmw-actions">
+        <button type="button" class="mmw-btn mmw-ghost" data-prev>הקודם</button>
+        <button type="button" class="mmw-btn mmw-primary" data-next data-target-step="4">המשך</button>
+      </div>
+    </div>
+
+    <div class="mmw-step" data-step="4" id="contentStep">
+      
+      <div class="mmw-items small-move" id="mmwItems">
+        <h3>הוסף פריטים בודדים</h3>
+      </div>
+      <div class="mmw-actions small-move" style="margin-top:8px">
+        <button type="button" class="mmw-btn mmw-ghost" id="mmwAddItem">➕הוסף פריט</button>
+      </div>
+      
+      <div class="apartment-move" style="display:none;">
+        <h3>כמה מעבירים?</h3>
+        <div class="mmw-field">
+          <label class="mmw-label">כמות קרטונים משוערת</label>
+          <select class="mmw-select" name="cartons" required>
+            <option value="" selected disabled>בחר מספר</option>
+          </select>
+        </div>
+        <div class="mmw-field">
+         <label class="mmw-label">מה מובילים?</label>
+         <textarea
+            class="mmw-textarea"
+    name="what_moving"
+    placeholder="פרט לנו מה מובילים (רהיטים גדולים, מכשירי חשמל, פריטים מיוחדים וכו')"
+    rows="3"
+  ></textarea>
+        </div>
+
+      </div>
+      
+      <div class="mmw-field">
+        <div class="mmw-checks">
+          <label class="mmw-chip">
+            <input type="checkbox" name="needs_crane" value="כן" />
+            לדעתי צריך מנוף
+          </label>
+        </div>
+        <input 
+          type="text" 
+          name="crane_reason" 
+          class="mmw-input" 
+          placeholder="למה צריך מנוף לדעתך?"
+          style="display:none; margin-top:8px"
+        />
+      </div>
+      
+      <div class="mmw-field">
+        <label class="mmw-label">תאריך להובלה</label>
+        <input type="date" name="date" class="mmw-input" required />
+      </div>
+      
+      <div class="mmw-actions">
+        <button type="button" class="mmw-btn mmw-ghost" data-prev>הקודם</button>
+        <button type="button" class="mmw-btn mmw-primary" data-next data-target-step="5">המשך</button>
+      </div>
+    </div>
+
+    <div class="mmw-step" data-step="5">
+      <h3>פרטי יצירת קשר</h3>
+      <div class="mmw-field"><label class="mmw-label">שם מלא</label><input class="mmw-input" name="name" required /></div>
+      <div class="mmw-field"><label class="mmw-label">טלפון</label><input class="mmw-input" name="phone" inputmode="tel" placeholder="05x-xxxxxxx" required /></div>
+      <div class="mmw-field"><label class="mmw-label">הערות</label><textarea class="mmw-textarea" name="notes" placeholder="קומה/גישה/פירוק והרכבה"></textarea></div>
+      <div class="mmw-terms-wrap">
+        <label class="mmw-terms">
+          <input type="checkbox" id="mmwTermsCheckbox" name="terms_approved" value="מאשר" checked required />
+          <span class="mmw-terms-label">
+            אני מאשר את 
+            <button type="button" class="mmw-terms-link" id="mmwTermsOpen">תקנון</button> האתר.
+          </span>
+        </label>
+      </div>
+
+      <div class="mmw-actions">
+        <button type="button" class="mmw-btn mmw-ghost" data-prev>הקודם</button>
+        <button type="submit" class="mmw-btn mmw-primary" id="mmwSubmit">קבלו הצעה</button>
+      </div>
+
+      <div class="mmw-note">ההזמנה אינה מחייבת. נחזור אליך עם מחיר שקוף ומוביל זמין.</div>
+    </div>
+  </form>
+</aside>
+
+<div class="mmw-modal-overlay" id="mmwTermsModal" aria-hidden="true">
+  <div class="mmw-modal" role="dialog" aria-modal="true" aria-label="תקנון">
+    <div class="mmw-modal-head">
+      <span class="mmw-modal-title">תקנון האתר</span>
+      <button type="button" class="mmw-modal-close" id="mmwTermsClose" aria-label="סגור">×</button>
+    </div>
+    <iframe
+      class="mmw-modal-iframe"
+      src="https://liftygo.co.il/terms-of-use/"
+      title="תקנון האתר"
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+    ></iframe>
+    <div class="mmw-modal-foot">
+      <a href="https://liftygo.co.il/terms-of-use/" target="_blank" rel="noopener noreferrer">פתיחה בחלון חדש</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var modal = document.getElementById("mmwTermsModal");
+    var openBtn = document.getElementById("mmwTermsOpen");
+    var closeBtn = document.getElementById("mmwTermsClose");
+    var form = document.getElementById("mmwForm");
+    var termsCheckbox = document.getElementById("mmwTermsCheckbox");
+    var submitBtn = document.getElementById("mmwSubmit");
+    if (!modal || !openBtn || !closeBtn || !form || !termsCheckbox || !submitBtn) return;
+
+    function openModal() {
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeModal() {
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    }
+
+    openBtn.addEventListener("click", openModal);
+    closeBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && modal.classList.contains("open")) {
+        closeModal();
+      }
+    });
+
+    function syncTermsState() {
+      submitBtn.disabled = !termsCheckbox.checked;
+      if (termsCheckbox.checked) {
+        termsCheckbox.setCustomValidity("");
+      } else {
+        termsCheckbox.setCustomValidity("יש לאשר את התנאים והתקנון לפני שליחת הטופס");
+      }
+    }
+
+    termsCheckbox.addEventListener("change", syncTermsState);
+
+    // Use capture to run before other submit handlers.
+    form.addEventListener("submit", function (e) {
+      if (!termsCheckbox.checked) {
+        e.preventDefault();
+        e.stopPropagation();
+        syncTermsState();
+        termsCheckbox.reportValidity();
+        termsCheckbox.focus();
+      }
+    }, true);
+
+    syncTermsState();
+  })();
+</script>
