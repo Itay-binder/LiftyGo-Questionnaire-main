@@ -308,7 +308,7 @@ if(currentStep === 1){
         const isSmallMove = (type === 'הובלה קטנה');
 
         smallMoveElements.forEach(el => el.style.display = isSmallMove ? '' : 'none');
-        apartmentMoveElement.style.display = isSmallMove ? 'none' : '');
+        apartmentMoveElement.style.display = isSmallMove ? 'none' : '';
         
         const cartonsSelect = apartmentMoveElement.querySelector('select[name="cartons"]');
         const firstItemInput = step.querySelector('.small-move [name="item_name_0"]');
@@ -601,6 +601,88 @@ if(currentStep === 1){
 
     // === 2. Item Management Logic (שלב 5 - קטנה) ===
 
+    const MAX_IMAGE_DIMENSION = 1920;
+    const JPEG_QUALITY = 0.82;
+
+    function safeDriveBaseName(name) {
+        const t = String(name || '').trim() || 'item';
+        return t.replace(/[\\/:*?"<>|\u0000-\u001F]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 120);
+    }
+
+    function compressImageFileToJpeg(file) {
+        return new Promise((resolve, reject) => {
+            if (!file || !file.type.startsWith('image/')) {
+                reject(new Error('not an image'));
+                return;
+            }
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                let { width, height } = img;
+                const max = MAX_IMAGE_DIMENSION;
+                if (width > max || height > max) {
+                    if (width >= height) {
+                        height = Math.round((height * max) / width);
+                        width = max;
+                    } else {
+                        width = Math.round((width * max) / height);
+                        height = max;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+                const comma = dataUrl.indexOf('base64,');
+                if (comma === -1) {
+                    reject(new Error('toDataURL failed'));
+                    return;
+                }
+                resolve({
+                    base64: dataUrl.slice(comma + 7),
+                    mime_type: 'image/jpeg'
+                });
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error('image load failed'));
+            };
+            img.src = url;
+        });
+    }
+
+    function renderRowPreviews(row) {
+        const wrap = row.querySelector('.previews');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        const imgs = row._itemImages || [];
+        imgs.forEach((imgData, i) => {
+            const holder = document.createElement('div');
+            holder.className = 'preview-thumb-wrap';
+            const thumb = document.createElement('img');
+            thumb.className = 'preview-thumb';
+            thumb.src = 'data:' + imgData.mime_type + ';base64,' + imgData.base64;
+            thumb.alt = 'תמונה ' + (i + 1);
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'thumb-remove';
+            removeBtn.setAttribute('aria-label', 'הסר תמונה');
+            removeBtn.textContent = '×';
+            removeBtn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                ev.preventDefault();
+                row._itemImages.splice(i, 1);
+                renderRowPreviews(row);
+            });
+            holder.appendChild(thumb);
+            holder.appendChild(removeBtn);
+            wrap.appendChild(holder);
+        });
+    }
+
     /** יצירת שורת פריט חדשה */
     let isCreatingRow = false; // Guard to prevent double execution
     const createItemRow = () => {
@@ -622,14 +704,14 @@ if(currentStep === 1){
                     <option value="10+">10+</option>
                 </select>
                 <div class="img-wrap">
-                    <input type="file" accept="image/*,video/*" class="mmw-img-input" style="display:none" data-index="${index}" />
-                    <button type="button" class="img-btn" title="הוספת תמונה או סרטון">
-                📸    </button>
-                    <img class="preview" alt="תצוגה מקדימה" style="display:none;" />
-                    <video class="preview-video" alt="תצוגה מקדימה" style="display:none;" controls></video>
+                    <input type="file" accept="image/*" multiple class="mmw-img-input" style="display:none" data-index="${index}" />
+                    <button type="button" class="img-btn" title="הוספת תמונות (מצלמה או גלריה)">📸</button>
+                    <div class="previews" aria-live="polite"></div>
                 </div>
                 <button type="button" class="del" title="מחיקת פריט">✖</button>
             `;
+
+            row._itemImages = [];
 
             row.querySelector('.del').addEventListener('click', () => {
                  row.remove();
@@ -639,30 +721,23 @@ if(currentStep === 1){
 
             const imgBtn = row.querySelector('.img-btn');
             const fileInput = row.querySelector('.mmw-img-input');
-            const previewImg = row.querySelector('.preview');
-            const previewVideo = row.querySelector('.preview-video');
 
             imgBtn.addEventListener('click', () => fileInput.click());
             
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files && e.target.files[0]) {
-                    const file = e.target.files[0];
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        const isVideo = file.type.startsWith('video/');
-                        if (isVideo) {
-                            previewVideo.src = e.target.result;
-                            previewVideo.style.display = 'block';
-                            previewImg.style.display = 'none';
-                        } else {
-                            previewImg.src = e.target.result;
-                            previewImg.style.display = 'block';
-                            previewVideo.style.display = 'none';
-                        }
-                        imgBtn.style.display = 'none';
-                    };
-                    reader.readAsDataURL(file);
+            fileInput.addEventListener('change', async (e) => {
+                const files = e.target.files;
+                if (!files || !files.length) return;
+                for (const file of files) {
+                    if (!file.type.startsWith('image/')) continue;
+                    try {
+                        const compressed = await compressImageFileToJpeg(file);
+                        row._itemImages.push(compressed);
+                    } catch (err) {
+                        console.warn('[Item Row] דילוג על תמונה (דחיסה/טעינה נכשלה):', err);
+                    }
                 }
+                e.target.value = '';
+                renderRowPreviews(row);
             });
 
             itemsContainer.appendChild(row);
@@ -704,8 +779,7 @@ if(currentStep === 1){
             return { base64: null, type: null };
         }
 
-        // תמיכה גם בתמונות וגם בסרטונים
-        const match = dataUrl.match(/^data:(image\/\w+|video\/\w+);base64,(.+)$/);
+        const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
 
         if (!match) {
             console.warn('[Extract Base64] No match found for data URL pattern');
@@ -714,8 +788,8 @@ if(currentStep === 1){
         }
 
         const result = {
-            base64: match[2],   // Base64 נקי
-            type: match[1]      // image/jpeg | image/png | video/mp4 וכו'
+            base64: match[2],
+            type: match[1]
         };
         
         console.log('[Extract Base64] ✅ Success:', {
@@ -731,7 +805,7 @@ if(currentStep === 1){
     const DRIVE_UPLOAD_API_URL = 'https://liftygo.co.il/wp-json/liftygo/v1/create-folder-and-upload';
     
     /**
-     * יצירת תיקייה והעלאת תמונות/סרטונים לגוגל דרייב
+     * יצירת תיקייה והעלאת תמונות לגוגל דרייב
      * @param {string} customerName - שם הלקוח
      * @param {string} orderDate - תאריך הזמנה (YYYY-MM-DD)
      * @param {Array} files - מערך של קבצים (base64, filename, mime_type)
@@ -765,12 +839,7 @@ if(currentStep === 1){
         
         console.log('[Drive Upload] Valid files count:', validFiles.length);
         
-        // ⚠️ זמני: לא מעלים תמונות לדרייב (חוסך זמן + יש תקלה). התיקייה תיווצר כרגיל, הקבצים לא נשלחים.
-        const SKIP_FILE_UPLOAD_TEMP = true;
-        const filesToSend = SKIP_FILE_UPLOAD_TEMP ? [] : validFiles;
-        if (SKIP_FILE_UPLOAD_TEMP) {
-            console.log('[Drive Upload] (זמני) דילוג על העלאת קבצים – רק יצירת תיקייה');
-        }
+        const filesToSend = validFiles;
         
         try {
             const requestBody = {
@@ -1069,106 +1138,29 @@ if(currentStep === 1){
             document.querySelectorAll('.mmw-items .row').forEach((row, index) => {
                 const itemName = formData.get(`item_name_${index}`);
                 const itemQty = formData.get(`item_qty_${index}`);
-                const previewImg = row.querySelector('.preview');
-                const previewVideo = row.querySelector('.preview-video');
-                
-                console.log('[Collect Payload] Checking row:', {
+                if (!itemName || !itemQty) return;
+
+                const rowImages = Array.isArray(row._itemImages) ? row._itemImages : [];
+                const images = rowImages
+                    .filter((im) => im && im.base64 && im.mime_type && im.mime_type.startsWith('image/'))
+                    .map((im) => ({ image_base64: im.base64, image_type: im.mime_type }));
+
+                const item = {
+                    name: itemName,
+                    quantity: itemQty,
+                    images,
+                    image_base64: images[0] ? images[0].image_base64 : null,
+                    image_type: images[0] ? images[0].image_type : null
+                };
+
+                console.log('[Collect Payload] Item row:', {
                     index,
                     itemName,
                     itemQty,
-                    hasPreviewImg: !!previewImg,
-                    hasPreviewVideo: !!previewVideo,
-                    previewImgSrc: previewImg ? previewImg.src : 'none',
-                    previewVideoSrc: previewVideo ? previewVideo.src : 'none',
-                    previewImgDisplay: previewImg ? window.getComputedStyle(previewImg).display : 'none',
-                    previewVideoDisplay: previewVideo ? window.getComputedStyle(previewVideo).display : 'none'
+                    imageCount: images.length
                 });
-                
-                if (itemName && itemQty) {
-                    // בדיקה אם זה תמונה או סרטון
-                    let previewSrc = '';
-                    
-                    // בדיקה קודם כל אם יש video עם data URL (לא דורשים display - רק שיהיה src תקין)
-                    if (previewVideo) {
-                        try {
-                            const videoSrc = previewVideo.src || previewVideo.getAttribute('src') || (previewVideo.currentSrc || '');
-                            console.log('[Collect Payload] Video check:', {
-                                src: videoSrc ? videoSrc.substring(0, 100) : 'none',
-                                hasSrc: !!videoSrc,
-                                startsWithData: videoSrc && typeof videoSrc === 'string' ? videoSrc.startsWith('data:') : false
-                            });
-                            if (videoSrc && typeof videoSrc === 'string' && videoSrc !== '' && videoSrc.startsWith('data:')) {
-                                previewSrc = videoSrc;
-                                console.log('[Collect Payload] ✅ Using video src (data URL found)');
-                            }
-                        } catch (e) {
-                            console.warn('[Collect Payload] Error checking video:', e);
-                        }
-                    }
-                    
-                    // אם אין video, נבדוק תמונה
-                    if (!previewSrc && previewImg) {
-                        try {
-                            const imgSrc = previewImg.src || previewImg.getAttribute('src') || (previewImg.currentSrc || '');
-                            console.log('[Collect Payload] Image check:', {
-                                src: imgSrc ? imgSrc.substring(0, 100) : 'none',
-                                hasSrc: !!imgSrc,
-                                startsWithData: imgSrc && typeof imgSrc === 'string' ? imgSrc.startsWith('data:') : false
-                            });
-                            if (imgSrc && typeof imgSrc === 'string' && imgSrc !== '' && imgSrc.startsWith('data:')) {
-                                previewSrc = imgSrc;
-                                console.log('[Collect Payload] ✅ Using image src (data URL found)');
-                            }
-                        } catch (e) {
-                            console.warn('[Collect Payload] Error checking image:', e);
-                        }
-                    }
-                    
-                    // אם לא מצאנו previewSrc, ננסה לחפש בכל ה-row
-                    if (!previewSrc) {
-                        try {
-                            const allImages = row.querySelectorAll('img.preview, video.preview-video');
-                            console.log('[Collect Payload] Fallback search - found', allImages.length, 'media elements');
-                            for (const media of allImages) {
-                                const mediaSrc = media.src || media.getAttribute('src') || (media.currentSrc || '');
-                                console.log('[Collect Payload] Checking media element:', {
-                                    tagName: media.tagName,
-                                    hasSrc: !!mediaSrc,
-                                    srcLength: mediaSrc ? mediaSrc.length : 0,
-                                    startsWithData: mediaSrc && typeof mediaSrc === 'string' ? mediaSrc.startsWith('data:') : false
-                                });
-                                if (mediaSrc && typeof mediaSrc === 'string' && mediaSrc.startsWith('data:')) {
-                                    previewSrc = mediaSrc;
-                                    console.log('[Collect Payload] ✅ Found media src in fallback search');
-                                    break;
-                                }
-                            }
-                        } catch (e) {
-                            console.warn('[Collect Payload] Error in fallback search:', e);
-                        }
-                    }
-                    
-                    const fileData = extractBase64Image(previewSrc);
-                    
-                    console.log('[Collect Payload] Item result:', {
-                        index,
-                        itemName,
-                        previewSrc: previewSrc ? previewSrc.substring(0, 50) + '...' : 'empty',
-                        hasBase64: !!fileData.base64,
-                        base64Length: fileData.base64 ? fileData.base64.length : 0,
-                        fileType: fileData.type,
-                        fileData: fileData
-                    });
-                    
-                    const item = {
-                        name: itemName,
-                        quantity: itemQty,
-                        image_base64: fileData.base64 || null, // null במקום מחרוזת
-                        image_type: fileData.type || null
-                    };
-                    
-                    items.push(item);
-                }
+
+                items.push(item);
             });
             payload.items_list = items;
             payload.items_text = items.map(i => `${i.quantity} יח' - ${i.name}`).join(' | ');
@@ -1233,12 +1225,24 @@ if(currentStep === 1){
             drive_folder_name: payload.drive_folder_name,
             drive_files_count: payload.drive_files_count
         });
+
+        const itemsListForWebhook = Array.isArray(payload.items_list)
+            ? payload.items_list.map((it) => ({
+                name: it.name,
+                quantity: it.quantity,
+                image_count: Array.isArray(it.images)
+                    ? it.images.length
+                    : (it.image_base64 ? 1 : 0)
+            }))
+            : payload.items_list;
+
+        const payloadForWebhook = { ...payload, items_list: itemsListForWebhook };
         
         try {
             const response = await fetch('https://hook.us1.make.com/wgko3er3c8r5mz8vv9llqwjza49jedfm', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payloadForWebhook)
             });
             
             if (response.ok) {
@@ -1289,65 +1293,54 @@ if(currentStep === 1){
           console.log('[LIFTYGO] submit prepared', { eventId, fbp, fbc });
         
         loaderTitle.textContent = 'התחלנו להזיז לך את ההובלה!';
-        loaderSubtitle.textContent = 'מעלים תמונות וסרטונים לגוגל דרייב...';
+        loaderSubtitle.textContent = 'מעלים תמונות לגוגל דרייב...';
         loader.classList.remove('quick-load'); 
         loader.classList.add('show');
         document.getElementById('mmwSubmit').classList.add('mmw-disabled');
 
         const payload = collectPayload();
         
-        // העלאת תמונות/סרטונים לגוגל דרייב לפני שליחת הטופס
+        // העלאת תמונות לגוגל דרייב לפני שליחת הטופס
         const isSmallMove = (payload.move_type === 'הובלה קטנה');
         let driveFolderInfo = null;
         
         if (isSmallMove && payload.items_list && Array.isArray(payload.items_list)) {
             console.log('[Form Submit] Items list:', payload.items_list);
             
-            // איסוף כל הקבצים להעלאה
             const filesToUpload = [];
             
-            payload.items_list.forEach((item, index) => {
-                console.log('[Form Submit] Processing item:', {
-                    index,
-                    name: item.name,
-                    hasBase64: !!item.image_base64,
-                    base64Value: item.image_base64 ? item.image_base64.substring(0, 50) + '...' : 'empty',
-                    imageType: item.image_type,
-                    isValid: item.image_base64 && item.image_base64 !== 'אין תמונה/סרטון' && item.image_type
-                });
-                
-                // בדיקה מפורשת יותר - רק אם יש base64 אמיתי ו-type
-                if (item.image_base64 && 
-                    item.image_base64 !== 'אין תמונה/סרטון' && 
-                    item.image_base64 !== null &&
-                    item.image_base64 !== '' &&
-                    item.image_type && 
-                    item.image_type !== null) {
-                    
-                    const isVideo = item.image_type.startsWith('video/');
-                    const fileExtension = item.image_type.split('/')[1] || (isVideo ? 'mp4' : 'jpg');
-                    const filename = `${item.name.replace(/[^a-z0-9]/gi, '_')}_${index + 1}.${fileExtension}`;
-                    
+            payload.items_list.forEach((item, itemIndex) => {
+                const base = safeDriveBaseName(item.name);
+                const imgs = Array.isArray(item.images) && item.images.length
+                    ? item.images
+                    : (item.image_base64 && item.image_type
+                        ? [{ image_base64: item.image_base64, image_type: item.image_type }]
+                        : []);
+
+                imgs.forEach((im, imgIdx) => {
+                    const b64 = im.image_base64;
+                    const mime = im.image_type;
+                    if (!b64 || b64 === 'אין תמונה/סרטון' || !mime || !mime.startsWith('image/')) return;
+
+                    const filename = `${base}_${imgIdx + 1}.jpg`;
+
                     console.log('[Form Submit] Adding file to upload:', {
-                        filename: filename,
-                        mime_type: item.image_type,
-                        base64_length: item.image_base64.length,
-                        base64_preview: item.image_base64.substring(0, 50) + '...'
+                        filename,
+                        mime_type: mime,
+                        base64_length: b64.length,
+                        itemIndex,
+                        imgIdx
                     });
-                    
+
                     filesToUpload.push({
-                        base64: item.image_base64,
-                        filename: filename,
-                        mime_type: item.image_type
+                        base64: b64,
+                        filename,
+                        mime_type: mime
                     });
-                } else {
-                    console.warn('[Form Submit] Skipping item (no valid file):', {
-                        index,
-                        name: item.name,
-                        hasBase64: !!item.image_base64,
-                        base64Value: item.image_base64 ? (typeof item.image_base64 === 'string' ? item.image_base64.substring(0, 30) + '...' : 'not string') : 'null',
-                        imageType: item.image_type
-                    });
+                });
+
+                if (!imgs.length) {
+                    console.warn('[Form Submit] Item has no images:', { itemIndex, name: item.name });
                 }
             });
             
@@ -1363,7 +1356,8 @@ if(currentStep === 1){
             if (filesToUpload.length === 0) {
                 console.warn('[Form Submit] ⚠️⚠️⚠️ NO FILES TO UPLOAD!');
                 console.warn('[Form Submit] Items list length:', payload.items_list ? payload.items_list.length : 0);
-                console.warn('[Form Submit] Items with images:', payload.items_list ? payload.items_list.filter(item => item.image_base64).length : 0);
+                console.warn('[Form Submit] Items with images:', payload.items_list ? payload.items_list.filter(item =>
+                    (item.images && item.images.length) || item.image_base64).length : 0);
                 console.warn('[Form Submit] All items:', payload.items_list);
             }
             
