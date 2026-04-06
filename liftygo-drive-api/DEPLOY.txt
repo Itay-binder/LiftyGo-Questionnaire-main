@@ -1,0 +1,45 @@
+LiftyGo Drive API (Cloud Run)
+==============================
+
+1) Google Cloud: enable APIs "Google Drive API" on the project.
+
+2) Create a Service Account, create JSON key. Copy the whole JSON (one line ok).
+
+3) In Google Drive: create (or pick) a parent folder for all order subfolders.
+   Share that folder with the Service Account email (Editor).
+   Copy the folder ID from the URL: https://drive.google.com/drive/folders/FOLDER_ID_HERE
+
+4) Deploy (replace PROJECT_ID, REGION, SERVICE name):
+
+   cd liftygo-drive-api
+   gcloud auth login
+   gcloud config set project PROJECT_ID
+
+   gcloud run deploy liftygo-drive-api \
+     --source . \
+     --region europe-west1 \
+     --allow-unauthenticated \
+     --set-env-vars "DRIVE_PARENT_FOLDER_ID=YOUR_PARENT_FOLDER_ID,ALLOWED_ORIGINS=https://liftygo.co.il,https://www.liftygo.co.il" \
+     --set-secrets "GOOGLE_SERVICE_ACCOUNT_JSON=drive-sa-json:latest"
+
+   (Or paste JSON without secrets: use Console > Cloud Run > Edit > Variables
+   GOOGLE_SERVICE_ACCOUNT_JSON = paste full JSON string)
+
+   Optional: UPLOAD_API_KEY=some-random-secret (then set same in window.LIFTYGO_DRIVE_UPLOAD_API_KEY on the site)
+
+5) After deploy, Cloud Run gives a URL like https://liftygo-drive-api-xxxxx-ew.a.run.app
+   The questionnaire must call: https://...run.app/upload
+
+   In WordPress / index.html before script.js:
+   <script>
+     window.LIFTYGO_DRIVE_UPLOAD_URL = 'https://YOUR-SERVICE-URL/upload';
+     window.LIFTYGO_DRIVE_UPLOAD_API_KEY = ''; // if you set UPLOAD_API_KEY
+   </script>
+
+6) Health check: GET https://YOUR-SERVICE-URL/health
+
+Notes
+-----
+- Multipart field name for files: "files" (multiple parts ok).
+- Body fields: customer_name, order_date.
+- Free tier: Cloud Run has a generous free tier; Drive uses your Google storage as usual.

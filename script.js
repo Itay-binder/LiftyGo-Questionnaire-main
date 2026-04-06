@@ -800,254 +800,96 @@ if(currentStep === 1){
         return result;
     }
 
-    // === Google Drive Upload Configuration ===
-    // ⚠️ חשוב: עדכן את הכתובת לכתובת ה-API של וורדפרס שלך
-    const DRIVE_UPLOAD_API_URL = 'https://liftygo.co.il/wp-json/liftygo/v1/create-folder-and-upload';
+    function base64ToBlob(base64, mimeType) {
+        const bin = atob(base64);
+        const len = bin.length;
+        const arr = new Uint8Array(len);
+        for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
+        return new Blob([arr], { type: mimeType || 'image/jpeg' });
+    }
+
+    // === Google Drive Upload (Cloud Run — multipart) ===
+    const DRIVE_UPLOAD_API_URL =
+        (typeof window !== 'undefined' && window.LIFTYGO_DRIVE_UPLOAD_URL) || '';
+    const DRIVE_UPLOAD_API_KEY =
+        (typeof window !== 'undefined' && window.LIFTYGO_DRIVE_UPLOAD_API_KEY) || '';
     
     /**
-     * יצירת תיקייה והעלאת תמונות לגוגל דרייב
-     * @param {string} customerName - שם הלקוח
-     * @param {string} orderDate - תאריך הזמנה (YYYY-MM-DD)
-     * @param {Array} files - מערך של קבצים (base64, filename, mime_type)
-     * @returns {Promise<Object|null>} - אובייקט עם folder_url, folder_id וכו' או null אם נכשל
+     * יצירת תיקייה והעלאת תמונות ל-Google Drive דרך Cloud Run (multipart — בלי JSON+Base64 כבד)
      */
     const createFolderAndUploadToDrive = async (customerName, orderDate, files) => {
+        if (!DRIVE_UPLOAD_API_URL) {
+            console.error('[Drive Upload] חסרה window.LIFTYGO_DRIVE_UPLOAD_URL (כתובת Cloud Run, נתיב /upload)');
+            return null;
+        }
         if (!customerName || !orderDate) {
             console.warn('[Drive Upload] Missing customer name or order date', { customerName, orderDate });
             return null;
         }
-        
-        // אם אין קבצים, לא ניצור תיקייה
         if (!files || files.length === 0) {
             console.log('[Drive Upload] No files to upload, skipping folder creation');
             return null;
         }
-        
-        console.log('[Drive Upload] Starting upload:', {
-            customerName,
-            orderDate,
-            filesCount: files.length,
-            files: files.map(f => ({ filename: f.filename, mime_type: f.mime_type, base64_length: f.base64 ? f.base64.length : 0 }))
-        });
-        
-        // בדיקת תקינות הקבצים לפני שליחה
         const validFiles = files.filter(f => f.base64 && f.filename && f.mime_type);
         if (validFiles.length === 0) {
-            console.warn('[Drive Upload] ⚠️ No valid files to upload after filtering');
+            console.warn('[Drive Upload] No valid files to upload after filtering');
             return null;
         }
-        
-        console.log('[Drive Upload] Valid files count:', validFiles.length);
-        
-        const filesToSend = validFiles;
-        
+
+        const fd = new FormData();
+        fd.append('customer_name', customerName);
+        fd.append('order_date', orderDate);
+        validFiles.forEach((f) => {
+            fd.append('files', base64ToBlob(f.base64, f.mime_type), f.filename);
+        });
+
+        const headers = {};
+        if (DRIVE_UPLOAD_API_KEY) {
+            headers['X-Api-Key'] = DRIVE_UPLOAD_API_KEY;
+        }
+
+        console.log('[Drive Upload] Multipart upload', { url: DRIVE_UPLOAD_API_URL, fileCount: validFiles.length });
+
         try {
-            const requestBody = {
-                customer_name: customerName,
-                order_date: orderDate,
-                files: filesToSend
-            };
-            
-            console.log('[Drive Upload] ⚠️⚠️⚠️ ABOUT TO SEND REQUEST TO PHP');
-            console.log('[Drive Upload] URL:', DRIVE_UPLOAD_API_URL);
-            console.log('[Drive Upload] Request body size:', JSON.stringify(requestBody).length, 'bytes');
-            console.log('[Drive Upload] Files count in request:', requestBody.files ? requestBody.files.length : 0);
-            
-            let response;
-            try {
-                console.log('[Drive Upload] ⚠️⚠️⚠️ CALLING FETCH NOW...');
-                console.log('[Drive Upload] Fetch options:', {
-                    method: 'POST',
-                    url: DRIVE_UPLOAD_API_URL,
-                    headers: { 'Content-Type': 'application/json' },
-                    bodySize: JSON.stringify(requestBody).length
-                });
-                
-                response = await fetch(DRIVE_UPLOAD_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-                
-                console.log('[Drive Upload] ⚠️⚠️⚠️ FETCH COMPLETED - RESPONSE RECEIVED FROM PHP');
-                console.log('[Drive Upload] Response object:', response);
-                console.log('[Drive Upload] Response type:', typeof response);
-            } catch (fetchError) {
-                console.error('[Drive Upload] ❌❌❌ FETCH ERROR - Request failed completely!');
-                console.error('[Drive Upload] Fetch error type:', fetchError.constructor.name);
-                console.error('[Drive Upload] Fetch error message:', fetchError.message);
-                console.error('[Drive Upload] Fetch error name:', fetchError.name);
-                console.error('[Drive Upload] Fetch error stack:', fetchError.stack);
-                console.error('[Drive Upload] This could be: CORS error, network error, or server not responding');
-                console.error('[Drive Upload] Check Network tab in DevTools to see if request was sent');
-                return null;
-            }
-            
-            console.log('[Drive Upload] ⚠️⚠️⚠️ RESPONSE RECEIVED FROM PHP');
-            
-            console.log('[Drive Upload] Response status:', response.status, response.statusText);
-            console.log('[Drive Upload] Response headers:', Object.fromEntries(response.headers.entries()));
-            
-            let responseText;
-            try {
-                console.log('[Drive Upload] ⚠️⚠️⚠️ READING RESPONSE TEXT...');
-                responseText = await response.text();
-                console.log('[Drive Upload] ⚠️⚠️⚠️ RAW RESPONSE TEXT (full):', responseText);
-            } catch (textError) {
-                console.error('[Drive Upload] ❌❌❌ ERROR READING RESPONSE TEXT!');
-                console.error('[Drive Upload] Text error:', textError);
-                console.error('[Drive Upload] Response might be empty or corrupted');
-                return null;
-            }
-            console.log('[Drive Upload] Raw response text length:', responseText.length);
-            console.log('[Drive Upload] Raw response text (first 500):', responseText.substring(0, 500));
-            console.log('[Drive Upload] Raw response text (last 500):', responseText.substring(Math.max(0, responseText.length - 500)));
-            console.log('[Drive Upload] Response status:', response.status);
-            console.log('[Drive Upload] Response statusText:', response.statusText);
-            console.log('[Drive Upload] Response headers:', Object.fromEntries(response.headers.entries()));
-            
+            const response = await fetch(DRIVE_UPLOAD_API_URL, {
+                method: 'POST',
+                body: fd,
+                headers
+            });
+            const responseText = await response.text();
             if (!response.ok) {
-                console.error('[Drive Upload] ❌❌❌ FAILED RESPONSE STATUS:', response.status);
-                console.error('[Drive Upload] Failed response text (full):', responseText);
-                try {
-                    const errorData = JSON.parse(responseText);
-                    console.error('[Drive Upload] Failed error data:', errorData);
-                } catch (e) {
-                    console.error('[Drive Upload] Failed to parse error response:', e);
-                    console.error('[Drive Upload] Response might not be JSON!');
-                }
+                console.error('[Drive Upload] HTTP', response.status, responseText.slice(0, 1200));
                 return null;
             }
-            
             let result;
             try {
-                // ⚠️⚠️⚠️ CRITICAL: ננסה לפרסר את ה-JSON
-                console.log('[Drive Upload] ⚠️⚠️⚠️ Attempting to parse JSON...');
-                console.log('[Drive Upload] Response text before parse:', responseText);
-                
                 result = JSON.parse(responseText);
-                
-                console.log('[Drive Upload] ✅✅✅ PARSED RESPONSE SUCCESSFULLY!');
-                console.log('[Drive Upload] Response type:', typeof result);
-                console.log('[Drive Upload] Response is array:', Array.isArray(result));
-                console.log('[Drive Upload] Response is null:', result === null);
-                console.log('[Drive Upload] Response keys:', result ? Object.keys(result) : 'null');
-                console.log('[Drive Upload] Response has folder_id:', !!result.folder_id);
-                console.log('[Drive Upload] Response has folder_url:', !!result.folder_url);
-                console.log('[Drive Upload] Response folder_id value:', result.folder_id);
-                console.log('[Drive Upload] Response folder_url value:', result.folder_url);
-                console.log('[Drive Upload] Response success value:', result.success);
-                console.log('[Drive Upload] Response files_count:', result.files_count);
-                console.log('[Drive Upload] Full response object:', result);
-                console.log('[Drive Upload] Full response JSON:', JSON.stringify(result, null, 2));
             } catch (e) {
-                console.error('[Drive Upload] ❌❌❌ FAILED TO PARSE JSON RESPONSE!');
-                console.error('[Drive Upload] Parse error:', e);
-                console.error('[Drive Upload] Parse error message:', e.message);
-                console.error('[Drive Upload] Response text was (full):', responseText);
-                console.error('[Drive Upload] Response text length:', responseText.length);
-                console.error('[Drive Upload] Response text type:', typeof responseText);
+                console.error('[Drive Upload] Invalid JSON from server', e, responseText.slice(0, 400));
                 return null;
             }
-            
-            // בדיקה אם התגובה היא אובייקט או מערך
-            // WordPress REST API אמור להחזיר אובייקט, אבל נבדוק למקרה של edge case
             if (Array.isArray(result)) {
-                console.warn('[Drive Upload] ⚠️ Response is an array, taking first element');
                 result = result[0];
             }
-            
-            // בדיקה נוספת - אולי הנתונים נמצאים בתוך wrapper (לא אמור לקרות אבל נבדוק)
-            if (result && typeof result === 'object' && !result.folder_id) {
-                // נבדוק אם יש wrapper כמו data או response
-                if (result.data && result.data.folder_id) {
-                    console.log('[Drive Upload] Found folder_id in result.data, using it');
-                    result = result.data;
-                } else if (result.response && result.response.folder_id) {
-                    console.log('[Drive Upload] Found folder_id in result.response, using it');
-                    result = result.response;
-                }
+            if (result && !result.folder_id && result.data && result.data.folder_id) {
+                result = result.data;
             }
-            
-            // אם יש folder_id אבל אין folder_url, נבנה את ה-URL
-            if (result && result.folder_id && !result.folder_url) {
-                result.folder_url = 'https://drive.google.com/drive/folders/' + result.folder_id;
-                console.log('[Drive Upload] ✅ Constructed folder_url from folder_id:', result.folder_url);
-            }
-            
-            // אם יש folder_id, נחזיר את התוצאה גם אם success הוא false או חסר
-            // זה חשוב כי גם אם הקבצים לא הועלו, התיקייה עדיין נוצרה
             if (result && result.folder_id) {
-                // אם אין folder_url, נבנה אותו מ-folder_id
                 if (!result.folder_url) {
                     result.folder_url = 'https://drive.google.com/drive/folders/' + result.folder_id;
-                    console.log('[Drive Upload] Constructed folder_url from folder_id:', result.folder_url);
                 }
-                
-                // נסמן כמוצלח כי התיקייה קיימת (גם אם הקבצים לא הועלו)
                 result.success = true;
-                
-                // נוודא שיש ערכים ברירת מחדל
                 result.folder_name = result.folder_name || '';
-                result.files_count = result.files_count || 0;
-                
-                console.log('[Drive Upload] ✅ Success - returning result (folder created):', {
-                    folder_url: result.folder_url,
-                    folder_id: result.folder_id,
-                    folder_name: result.folder_name,
-                    files_count: result.files_count,
-                    success: result.success
-                });
-                
-                // אם הקבצים לא הועלו, נדווח על זה
-                if (result.files_count === 0 && files && files.length > 0) {
-                    console.warn('[Drive Upload] ⚠️ Warning: Folder created but no files were uploaded!', {
-                        expected_files: files.length,
-                        uploaded_files: result.files_count
-                    });
+                result.files_count = result.files_count != null ? result.files_count : validFiles.length;
+                if (result.files_count === 0 && validFiles.length > 0) {
+                    console.warn('[Drive Upload] Server reported files_count 0');
                 }
-                
                 return result;
-            } else {
-                console.error('[Drive Upload] ❌❌❌ CRITICAL ERROR - Response missing folder_id!');
-                console.error('[Drive Upload] Full response object:', result);
-                console.error('[Drive Upload] Response type:', typeof result);
-                console.error('[Drive Upload] Response is array:', Array.isArray(result));
-                console.error('[Drive Upload] Response keys:', result ? Object.keys(result) : 'null');
-                console.error('[Drive Upload] Full response JSON:', JSON.stringify(result, null, 2));
-                
-                // אם יש שגיאה אבל התיקייה עדיין נוצרה, ננסה לבדוק אם יש מידע אחר
-                if (result && result.error) {
-                    console.error('[Drive Upload] Error in response:', result.error);
-                }
-                
-                // ניסיון אחרון - אולי folder_id נמצא במקום אחר?
-                if (result) {
-                    console.error('[Drive Upload] Trying to find folder_id in different places...');
-                    console.error('[Drive Upload] result.data?.folder_id:', result.data?.folder_id);
-                    console.error('[Drive Upload] result.response?.folder_id:', result.response?.folder_id);
-                    console.error('[Drive Upload] result.body?.folder_id:', result.body?.folder_id);
-                }
-                
-                return null;
             }
-        } catch (error) {
-            console.error('[Drive Upload] ❌❌❌ UNEXPECTED ERROR IN createFolderAndUploadToDrive!');
-            console.error('[Drive Upload] Error type:', error.constructor.name);
-            console.error('[Drive Upload] Error name:', error.name);
-            console.error('[Drive Upload] Error message:', error.message);
-            console.error('[Drive Upload] Error stack:', error.stack);
-            console.error('[Drive Upload] Full error object:', error);
-            
-            // אם זו שגיאת רשת או CORS, נדווח על זה
-            if (error.message && (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('CORS') || error.message.includes('message channel'))) {
-                console.error('[Drive Upload] ⚠️ This looks like a network/CORS/channel error!');
-                console.error('[Drive Upload] Check Network tab in DevTools to see if request was sent');
-                console.error('[Drive Upload] Check if server is responding and CORS headers are correct');
-            }
-            
+            console.error('[Drive Upload] Missing folder_id in response', result);
+            return null;
+        } catch (err) {
+            console.error('[Drive Upload] Network error', err);
             return null;
         }
     };
