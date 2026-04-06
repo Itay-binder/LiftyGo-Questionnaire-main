@@ -102,6 +102,17 @@ app.get('/health', (_req, res) => {
   res.status(200).type('text/plain').send('ok');
 });
 
+// גלישה בדפדפן = GET — לא שגיאת שרת, פשוט אין כאן דף. העלאה = POST מmultipart מהטופס.
+app.get('/upload', (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    hint: 'This URL is for POST (multipart) from the questionnaire, not for opening in a browser.',
+    method: 'POST',
+    fields: ['customer_name', 'order_date'],
+    file_field: 'files',
+  });
+});
+
 app.post('/upload', upload.array('files', 40), async (req, res) => {
   try {
     const apiKey = process.env.UPLOAD_API_KEY || '';
