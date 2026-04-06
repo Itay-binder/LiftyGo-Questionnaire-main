@@ -179,14 +179,16 @@ app.post('/upload', upload.array('files', 40), async (req, res) => {
       }
     }
 
+    const folderUrl = `https://drive.google.com/drive/folders/${folderId}`;
+
     if (uploadedFileIds.length === 0) {
-      try {
-        await drive.files.delete({ fileId: folderId, ...driveOpts });
-      } catch (delErr) {
-        console.error('Could not delete empty folder', folderId, delErr.message || delErr);
-      }
+      // לא מוחקים תיקייה — כדי שתוכל לראות בדרייב מה קרה + לוגים ב־Cloud Run
+      console.error('Drive: folder kept (uploads failed)', folderId, JSON.stringify(fileErrors));
       return res.status(500).json({
         error: 'No files could be uploaded to Drive',
+        folder_id: folderId,
+        folder_url: folderUrl,
+        folder_name: folderName,
         file_errors: fileErrors,
       });
     }
@@ -194,7 +196,7 @@ app.post('/upload', upload.array('files', 40), async (req, res) => {
     return res.json({
       success: true,
       folder_id: folderId,
-      folder_url: `https://drive.google.com/drive/folders/${folderId}`,
+      folder_url: folderUrl,
       files_count: uploadedFileIds.length,
       folder_name: folderName,
       failed_count: fileErrors.length,

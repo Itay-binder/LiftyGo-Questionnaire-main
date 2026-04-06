@@ -875,6 +875,30 @@ if(currentStep === 1){
             });
             const responseText = await response.text();
             if (!response.ok) {
+                let errBody;
+                try {
+                    errBody = JSON.parse(responseText);
+                } catch (_e) {
+                    errBody = null;
+                }
+                // שרת משאיר תיקייה ריקה ומחזיר folder_* כדי שתדע איפה לחפש
+                if (errBody && errBody.folder_id) {
+                    const partial = {
+                        folder_id: errBody.folder_id,
+                        folder_url:
+                            errBody.folder_url ||
+                            'https://drive.google.com/drive/folders/' + errBody.folder_id,
+                        folder_name: errBody.folder_name || '',
+                        files_count: 0,
+                        upload_success: false,
+                        upload_error: {
+                            message: errBody.error || 'Upload failed',
+                            file_errors: errBody.file_errors || [],
+                        },
+                    };
+                    console.error('[Drive Upload] תיקייה נוצרה אך קבצים לא הועלו:', partial);
+                    return partial;
+                }
                 console.error('[Drive Upload] HTTP', response.status, responseText.slice(0, 1200));
                 return null;
             }
@@ -896,6 +920,7 @@ if(currentStep === 1){
                     result.folder_url = 'https://drive.google.com/drive/folders/' + result.folder_id;
                 }
                 result.success = true;
+                result.upload_success = true;
                 result.folder_name = result.folder_name || '';
                 result.files_count = result.files_count != null ? result.files_count : validFiles.length;
                 if (result.files_count === 0 && validFiles.length > 0) {
@@ -1252,7 +1277,10 @@ if(currentStep === 1){
                         orderDate,
                         filesToUpload
                     );
-                    console.log('[Form Submit] ⚠️⚠️⚠️ createFolderAndUploadToDrive RETURNED - SUCCESS');
+                    console.log('[Form Submit] createFolderAndUploadToDrive RETURNED', {
+                        ok: !!(driveFolderInfo && driveFolderInfo.folder_id),
+                        upload_success: driveFolderInfo ? driveFolderInfo.upload_success !== false : null
+                    });
                 } catch (error) {
                     console.error('[Form Submit] ❌❌❌ ERROR in createFolderAndUploadToDrive:', error);
                     console.error('[Form Submit] Error type:', error.constructor.name);
@@ -1275,12 +1303,18 @@ if(currentStep === 1){
                         console.log('[Form Submit] ✅ Constructed folder_url from folder_id:', driveFolderInfo.folder_url);
                     }
                     
-                    loaderSubtitle.textContent = 'תיקייה נוצרה בהצלחה! שולחים את פרטי ההזמנה...';
+                    if (driveFolderInfo.upload_success === false) {
+                        loaderSubtitle.textContent =
+                            'נוצרה תיקייה בדרייב ללא תמונות — השליחה נמשכת; הקישור יגיע למייק. בדוק בדרייב / לוגים.';
+                    } else {
+                        loaderSubtitle.textContent = 'תיקייה נוצרה בהצלחה! שולחים את פרטי ההזמנה...';
+                    }
                     console.log('[Form Submit] ✅ Drive folder created successfully:', {
                         folder_url: driveFolderInfo.folder_url,
                         folder_id: driveFolderInfo.folder_id,
                         folder_name: driveFolderInfo.folder_name,
-                        files_count: driveFolderInfo.files_count || 0
+                        files_count: driveFolderInfo.files_count || 0,
+                        upload_success: driveFolderInfo.upload_success !== false
                     });
                     if (driveFolderInfo.upload_success === false && driveFolderInfo.upload_error) {
                         console.warn('[Form Submit] ⚠️ Image upload to Drive failed:', driveFolderInfo.upload_error.message || driveFolderInfo.upload_error);
