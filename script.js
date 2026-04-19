@@ -1,3 +1,4 @@
+  
             (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;
 b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,
 u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));
@@ -12,7 +13,7 @@ d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))
 })
 ({ key: "AIzaSyBHPpbK5_Otha3gRC7n7sWwgnkIhyUC_uA", v: "weekly", language: "he", region: "IL" });
 
-function liftygoMmwInit() {
+document.addEventListener('DOMContentLoaded', () => {
    
     // === UTM Injection ===
 (function () {
@@ -36,14 +37,13 @@ function liftygoMmwInit() {
     const steps = document.querySelectorAll('.mmw-step');
     const progressBar = document.getElementById('mmwBar');
     const loader = document.getElementById('mmwLoader');
-    if (!form || !progressBar || !loader || steps.length === 0) {
-        console.error('[LIFTYGO] חסר אלמנט חיוני (mmwForm, mmwBar, mmwLoader או .mmw-step). בדוק הטמעת HTML.');
-        return;
-    }
     const loaderTitle = document.getElementById('loaderTitle');
     const loaderSubtitle = document.getElementById('loaderSubtitle');
     const itemsContainer = document.getElementById('mmwItems');
     const addItemBtn = document.getElementById('mmwAddItem');
+    const cartonsSelectElement = document.querySelector('select[name="cartons"]');
+    const apartmentRoomsWrap = document.querySelector('[data-rooms-wrap]');
+    const apartmentRoomsInput = document.querySelector('input[name="apartment_rooms"]');
 
     let currentStep = 1;
     const totalSteps = steps.length;
@@ -109,6 +109,66 @@ const generateOrderId = () => {
         select.innerHTML += '<option value="200+ קרטונים">200+ קרטונים</option>';
     };
     fillCartonsSelect();
+
+    const estimateRoomsByCartons = (cartonsValue) => {
+        switch (cartonsValue) {
+            case '1 - 20 קרטונים':
+                return '1';
+            case '20 - 50 קרטונים':
+                return '2';
+            case '50 - 100 קרטונים':
+                return '3';
+            case '100 - 150 קרטונים':
+                return '4';
+            case '150 - 200 קרטונים':
+                return '5';
+            case '200+ קרטונים':
+                return '';
+            default:
+                return '';
+        }
+    };
+
+    const resetApartmentRooms = () => {
+        if (!apartmentRoomsInput) return;
+        apartmentRoomsInput.value = '';
+        apartmentRoomsInput.dataset.autoFilled = '0';
+        apartmentRoomsInput.removeAttribute('required');
+        apartmentRoomsInput.setCustomValidity('');
+    };
+
+    const syncApartmentRoomsField = () => {
+        if (!apartmentRoomsWrap || !apartmentRoomsInput) return;
+        const selectedMoveTypeInput = document.querySelector('input[name="move_type"]:checked');
+        const selectedMoveType = selectedMoveTypeInput ? selectedMoveTypeInput.value : '';
+        const cartonsValue = cartonsSelectElement ? cartonsSelectElement.value : '';
+        const shouldShow =
+            selectedMoveType === 'הובלת דירה' &&
+            cartonsValue &&
+            cartonsValue !== 'מעביר פריטים בודדים';
+
+        apartmentRoomsWrap.classList.toggle('is-open', !!shouldShow);
+
+        if (!shouldShow) {
+            resetApartmentRooms();
+            return;
+        }
+
+        const suggestedRooms = estimateRoomsByCartons(cartonsValue);
+        if (!apartmentRoomsInput.value || apartmentRoomsInput.dataset.autoFilled === '1') {
+            apartmentRoomsInput.value = suggestedRooms;
+            apartmentRoomsInput.dataset.autoFilled = suggestedRooms ? '1' : '0';
+        }
+    };
+
+    if (apartmentRoomsInput) {
+        apartmentRoomsInput.addEventListener('input', () => {
+            apartmentRoomsInput.dataset.autoFilled = '0';
+        });
+    }
+    if (cartonsSelectElement) {
+        cartonsSelectElement.addEventListener('change', syncApartmentRoomsField);
+    }
 
     // === 1. Wizard Navigation Logic ===
 
@@ -299,8 +359,7 @@ if(currentStep === 1){
 
     /** עדכון סרגל ההתקדמות */
     const updateProgress = () => {
-        const denom = Math.max(1, totalSteps - 1);
-        const percent = ((currentStep - 1) / denom) * 100;
+        const percent = (currentStep - 1) / (totalSteps - 1) * 100;
         progressBar.style.width = `${percent}%`;
     };
 
@@ -309,7 +368,7 @@ if(currentStep === 1){
         const step = document.querySelector('[data-step="4"]');
         const smallMoveElements = step.querySelectorAll('.small-move');
         const apartmentMoveElement = step.querySelector('.apartment-move');
-        
+
         const isSmallMove = (type === 'הובלה קטנה');
 
         smallMoveElements.forEach(el => el.style.display = isSmallMove ? '' : 'none');
@@ -321,10 +380,14 @@ if(currentStep === 1){
         // עדכון ה-Required
         if (isSmallMove) {
             cartonsSelect.removeAttribute('required');
+            if (cartonsSelect) cartonsSelect.value = '';
+            resetApartmentRooms();
+            if (apartmentRoomsWrap) apartmentRoomsWrap.classList.remove('is-open');
             if (firstItemInput) firstItemInput.setAttribute('required', true); 
         } else {
             cartonsSelect.setAttribute('required', true);
             step.querySelectorAll('.small-move input[name^="item_name_"]').forEach(input => input.removeAttribute('required'));
+            syncApartmentRoomsField();
         }
     };
     
@@ -587,6 +650,14 @@ if(currentStep === 1){
                 toggleAccessFields(e.target.closest('.mmw-step'));
             }
             // *** סוף לוגיקה דינמית ***
+
+            if (e.target.name === 'move_type') {
+                moveType = e.target.value;
+                toggleContentStep(moveType);
+            }
+            if (e.target.name === 'move_type' || e.target.name === 'cartons') {
+                syncApartmentRoomsField();
+            }
             
             // *** לוגיקה דינמית למנוף ***
             if (e.target.name === 'needs_crane') {
@@ -605,88 +676,6 @@ if(currentStep === 1){
     });
 
     // === 2. Item Management Logic (שלב 5 - קטנה) ===
-
-    const MAX_IMAGE_DIMENSION = 1920;
-    const JPEG_QUALITY = 0.82;
-
-    function safeDriveBaseName(name) {
-        const t = String(name || '').trim() || 'item';
-        return t.replace(/[\\/:*?"<>|\u0000-\u001F]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 120);
-    }
-
-    function compressImageFileToJpeg(file) {
-        return new Promise((resolve, reject) => {
-            if (!file || !file.type.startsWith('image/')) {
-                reject(new Error('not an image'));
-                return;
-            }
-            const url = URL.createObjectURL(file);
-            const img = new Image();
-            img.onload = () => {
-                URL.revokeObjectURL(url);
-                let { width, height } = img;
-                const max = MAX_IMAGE_DIMENSION;
-                if (width > max || height > max) {
-                    if (width >= height) {
-                        height = Math.round((height * max) / width);
-                        width = max;
-                    } else {
-                        width = Math.round((width * max) / height);
-                        height = max;
-                    }
-                }
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
-                const comma = dataUrl.indexOf('base64,');
-                if (comma === -1) {
-                    reject(new Error('toDataURL failed'));
-                    return;
-                }
-                resolve({
-                    base64: dataUrl.slice(comma + 7),
-                    mime_type: 'image/jpeg'
-                });
-            };
-            img.onerror = () => {
-                URL.revokeObjectURL(url);
-                reject(new Error('image load failed'));
-            };
-            img.src = url;
-        });
-    }
-
-    function renderRowPreviews(row) {
-        const wrap = row.querySelector('.previews');
-        if (!wrap) return;
-        wrap.innerHTML = '';
-        const imgs = row._itemImages || [];
-        imgs.forEach((imgData, i) => {
-            const holder = document.createElement('div');
-            holder.className = 'preview-thumb-wrap';
-            const thumb = document.createElement('img');
-            thumb.className = 'preview-thumb';
-            thumb.src = 'data:' + imgData.mime_type + ';base64,' + imgData.base64;
-            thumb.alt = 'תמונה ' + (i + 1);
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'thumb-remove';
-            removeBtn.setAttribute('aria-label', 'הסר תמונה');
-            removeBtn.textContent = '×';
-            removeBtn.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                ev.preventDefault();
-                row._itemImages.splice(i, 1);
-                renderRowPreviews(row);
-            });
-            holder.appendChild(thumb);
-            holder.appendChild(removeBtn);
-            wrap.appendChild(holder);
-        });
-    }
 
     /** יצירת שורת פריט חדשה */
     let isCreatingRow = false; // Guard to prevent double execution
@@ -709,14 +698,14 @@ if(currentStep === 1){
                     <option value="10+">10+</option>
                 </select>
                 <div class="img-wrap">
-                    <input type="file" accept="image/*" multiple class="mmw-img-input" style="display:none" data-index="${index}" />
-                    <button type="button" class="img-btn" title="הוספת תמונות (מצלמה או גלריה)">📸</button>
-                    <div class="previews" aria-live="polite"></div>
+                    <input type="file" accept="image/*,video/*" class="mmw-img-input" style="display:none" data-index="${index}" />
+                    <button type="button" class="img-btn" title="הוספת תמונה או סרטון">
+                📸    </button>
+                    <img class="preview" alt="תצוגה מקדימה" style="display:none;" />
+                    <video class="preview-video" alt="תצוגה מקדימה" style="display:none;" controls></video>
                 </div>
                 <button type="button" class="del" title="מחיקת פריט">✖</button>
             `;
-
-            row._itemImages = [];
 
             row.querySelector('.del').addEventListener('click', () => {
                  row.remove();
@@ -726,23 +715,30 @@ if(currentStep === 1){
 
             const imgBtn = row.querySelector('.img-btn');
             const fileInput = row.querySelector('.mmw-img-input');
+            const previewImg = row.querySelector('.preview');
+            const previewVideo = row.querySelector('.preview-video');
 
             imgBtn.addEventListener('click', () => fileInput.click());
             
-            fileInput.addEventListener('change', async (e) => {
-                const files = e.target.files;
-                if (!files || !files.length) return;
-                for (const file of files) {
-                    if (!file.type.startsWith('image/')) continue;
-                    try {
-                        const compressed = await compressImageFileToJpeg(file);
-                        row._itemImages.push(compressed);
-                    } catch (err) {
-                        console.warn('[Item Row] דילוג על תמונה (דחיסה/טעינה נכשלה):', err);
-                    }
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const isVideo = file.type.startsWith('video/');
+                        if (isVideo) {
+                            previewVideo.src = e.target.result;
+                            previewVideo.style.display = 'block';
+                            previewImg.style.display = 'none';
+                        } else {
+                            previewImg.src = e.target.result;
+                            previewImg.style.display = 'block';
+                            previewVideo.style.display = 'none';
+                        }
+                        imgBtn.style.display = 'none';
+                    };
+                    reader.readAsDataURL(file);
                 }
-                e.target.value = '';
-                renderRowPreviews(row);
             });
 
             itemsContainer.appendChild(row);
@@ -784,7 +780,8 @@ if(currentStep === 1){
             return { base64: null, type: null };
         }
 
-        const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+        // תמיכה גם בתמונות וגם בסרטונים
+        const match = dataUrl.match(/^data:(image\/\w+|video\/\w+);base64,(.+)$/);
 
         if (!match) {
             console.warn('[Extract Base64] No match found for data URL pattern');
@@ -793,8 +790,8 @@ if(currentStep === 1){
         }
 
         const result = {
-            base64: match[2],
-            type: match[1]
+            base64: match[2],   // Base64 נקי
+            type: match[1]      // image/jpeg | image/png | video/mp4 וכו'
         };
         
         console.log('[Extract Base64] ✅ Success:', {
@@ -805,144 +802,259 @@ if(currentStep === 1){
         return result;
     }
 
-    /** מסיר קידומת data-URL ורווחים — בלי זה atob נכשל והבלוב נשאר ריק */
-    function normalizeBase64ForUpload(raw) {
-        if (!raw || typeof raw !== 'string') return '';
-        let s = raw.trim().replace(/\s/g, '');
-        const m = s.match(/^data:[^;]+;base64,(.+)$/i);
-        if (m) s = m[1];
-        return s;
-    }
-
-    function base64ToBlob(base64, mimeType) {
-        const clean = normalizeBase64ForUpload(base64);
-        if (!clean) return new Blob([], { type: mimeType || 'image/jpeg' });
-        const bin = atob(clean);
-        const len = bin.length;
-        const arr = new Uint8Array(len);
-        for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
-        return new Blob([arr], { type: mimeType || 'image/jpeg' });
-    }
-
-    // === Google Drive Upload (Cloud Run — multipart) ===
-    // נקראים בזמן ההעלאה (לא בטעינת הקובץ) כדי שלא יאבדו URL/API אם מגדירים אותם אחרי script.js
-
+    // === Google Drive Upload Configuration ===
+    // ⚠️ חשוב: עדכן את הכתובת לכתובת ה-API של וורדפרס שלך
+    const DRIVE_UPLOAD_API_URL = 'https://liftygo.co.il/wp-json/liftygo/v1/create-folder-and-upload';
+    
     /**
-     * יצירת תיקייה והעלאת תמונות ל-Google Drive דרך Cloud Run (multipart — בלי JSON+Base64 כבד)
+     * יצירת תיקייה והעלאת תמונות/סרטונים לגוגל דרייב
+     * @param {string} customerName - שם הלקוח
+     * @param {string} orderDate - תאריך הזמנה (YYYY-MM-DD)
+     * @param {Array} files - מערך של קבצים (base64, filename, mime_type)
+     * @returns {Promise<Object|null>} - אובייקט עם folder_url, folder_id וכו' או null אם נכשל
      */
     const createFolderAndUploadToDrive = async (customerName, orderDate, files) => {
-        const uploadUrl =
-            (typeof window !== 'undefined' && window.LIFTYGO_DRIVE_UPLOAD_URL) || '';
-        const uploadApiKey =
-            (typeof window !== 'undefined' && window.LIFTYGO_DRIVE_UPLOAD_API_KEY) || '';
-        if (!uploadUrl) {
-            console.error('[Drive Upload] חסרה window.LIFTYGO_DRIVE_UPLOAD_URL (כתובת Cloud Run, נתיב /upload)');
-            return null;
-        }
         if (!customerName || !orderDate) {
             console.warn('[Drive Upload] Missing customer name or order date', { customerName, orderDate });
             return null;
         }
+        
+        // אם אין קבצים, לא ניצור תיקייה
         if (!files || files.length === 0) {
             console.log('[Drive Upload] No files to upload, skipping folder creation');
             return null;
         }
+        
+        console.log('[Drive Upload] Starting upload:', {
+            customerName,
+            orderDate,
+            filesCount: files.length,
+            files: files.map(f => ({ filename: f.filename, mime_type: f.mime_type, base64_length: f.base64 ? f.base64.length : 0 }))
+        });
+        
+        // בדיקת תקינות הקבצים לפני שליחה
         const validFiles = files.filter(f => f.base64 && f.filename && f.mime_type);
         if (validFiles.length === 0) {
-            console.warn('[Drive Upload] No valid files to upload after filtering');
+            console.warn('[Drive Upload] ⚠️ No valid files to upload after filtering');
             return null;
         }
-
-        const fd = new FormData();
-        fd.append('customer_name', customerName);
-        fd.append('order_date', orderDate);
-        let appended = 0;
-        validFiles.forEach((f) => {
-            const blob = base64ToBlob(f.base64, f.mime_type);
-            if (!blob || blob.size === 0) {
-                console.error('[Drive Upload] Blob ריק אחרי base64 — דלג על קובץ', f.filename);
-                return;
-            }
-            fd.append('files', blob, f.filename);
-            appended += 1;
-        });
-        if (appended === 0) {
-            console.error('[Drive Upload] אין קבצים תקפים להעלאה (כל ה-Blobים ריקים)');
-            return null;
+        
+        console.log('[Drive Upload] Valid files count:', validFiles.length);
+        
+        // ⚠️ זמני: לא מעלים תמונות לדרייב (חוסך זמן + יש תקלה). התיקייה תיווצר כרגיל, הקבצים לא נשלחים.
+        const SKIP_FILE_UPLOAD_TEMP = true;
+        const filesToSend = SKIP_FILE_UPLOAD_TEMP ? [] : validFiles;
+        if (SKIP_FILE_UPLOAD_TEMP) {
+            console.log('[Drive Upload] (זמני) דילוג על העלאת קבצים – רק יצירת תיקייה');
         }
-
-        const headers = {};
-        if (uploadApiKey) {
-            headers['X-Api-Key'] = uploadApiKey;
-        }
-
-        console.log('[Drive Upload] Multipart upload', { url: uploadUrl, fileCount: validFiles.length });
-
+        
         try {
-            const response = await fetch(uploadUrl, {
-                method: 'POST',
-                body: fd,
-                headers
-            });
-            const responseText = await response.text();
-            if (!response.ok) {
-                let errBody;
-                try {
-                    errBody = JSON.parse(responseText);
-                } catch (_e) {
-                    errBody = null;
-                }
-                // שרת משאיר תיקייה ריקה ומחזיר folder_* כדי שתדע איפה לחפש
-                if (errBody && errBody.folder_id) {
-                    const partial = {
-                        folder_id: errBody.folder_id,
-                        folder_url:
-                            errBody.folder_url ||
-                            'https://drive.google.com/drive/folders/' + errBody.folder_id,
-                        folder_name: errBody.folder_name || '',
-                        files_count: 0,
-                        upload_success: false,
-                        upload_error: {
-                            message: errBody.error || 'Upload failed',
-                            file_errors: errBody.file_errors || [],
-                        },
-                    };
-                    console.error('[Drive Upload] תיקייה נוצרה אך קבצים לא הועלו:', partial);
-                    return partial;
-                }
-                console.error('[Drive Upload] HTTP', response.status, responseText.slice(0, 1200));
+            const requestBody = {
+                customer_name: customerName,
+                order_date: orderDate,
+                files: filesToSend
+            };
+            
+            console.log('[Drive Upload] ⚠️⚠️⚠️ ABOUT TO SEND REQUEST TO PHP');
+            console.log('[Drive Upload] URL:', DRIVE_UPLOAD_API_URL);
+            console.log('[Drive Upload] Request body size:', JSON.stringify(requestBody).length, 'bytes');
+            console.log('[Drive Upload] Files count in request:', requestBody.files ? requestBody.files.length : 0);
+            
+            let response;
+            try {
+                console.log('[Drive Upload] ⚠️⚠️⚠️ CALLING FETCH NOW...');
+                console.log('[Drive Upload] Fetch options:', {
+                    method: 'POST',
+                    url: DRIVE_UPLOAD_API_URL,
+                    headers: { 'Content-Type': 'application/json' },
+                    bodySize: JSON.stringify(requestBody).length
+                });
+                
+                response = await fetch(DRIVE_UPLOAD_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                console.log('[Drive Upload] ⚠️⚠️⚠️ FETCH COMPLETED - RESPONSE RECEIVED FROM PHP');
+                console.log('[Drive Upload] Response object:', response);
+                console.log('[Drive Upload] Response type:', typeof response);
+            } catch (fetchError) {
+                console.error('[Drive Upload] ❌❌❌ FETCH ERROR - Request failed completely!');
+                console.error('[Drive Upload] Fetch error type:', fetchError.constructor.name);
+                console.error('[Drive Upload] Fetch error message:', fetchError.message);
+                console.error('[Drive Upload] Fetch error name:', fetchError.name);
+                console.error('[Drive Upload] Fetch error stack:', fetchError.stack);
+                console.error('[Drive Upload] This could be: CORS error, network error, or server not responding');
+                console.error('[Drive Upload] Check Network tab in DevTools to see if request was sent');
                 return null;
             }
+            
+            console.log('[Drive Upload] ⚠️⚠️⚠️ RESPONSE RECEIVED FROM PHP');
+            
+            console.log('[Drive Upload] Response status:', response.status, response.statusText);
+            console.log('[Drive Upload] Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            let responseText;
+            try {
+                console.log('[Drive Upload] ⚠️⚠️⚠️ READING RESPONSE TEXT...');
+                responseText = await response.text();
+                console.log('[Drive Upload] ⚠️⚠️⚠️ RAW RESPONSE TEXT (full):', responseText);
+            } catch (textError) {
+                console.error('[Drive Upload] ❌❌❌ ERROR READING RESPONSE TEXT!');
+                console.error('[Drive Upload] Text error:', textError);
+                console.error('[Drive Upload] Response might be empty or corrupted');
+                return null;
+            }
+            console.log('[Drive Upload] Raw response text length:', responseText.length);
+            console.log('[Drive Upload] Raw response text (first 500):', responseText.substring(0, 500));
+            console.log('[Drive Upload] Raw response text (last 500):', responseText.substring(Math.max(0, responseText.length - 500)));
+            console.log('[Drive Upload] Response status:', response.status);
+            console.log('[Drive Upload] Response statusText:', response.statusText);
+            console.log('[Drive Upload] Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            if (!response.ok) {
+                console.error('[Drive Upload] ❌❌❌ FAILED RESPONSE STATUS:', response.status);
+                console.error('[Drive Upload] Failed response text (full):', responseText);
+                try {
+                    const errorData = JSON.parse(responseText);
+                    console.error('[Drive Upload] Failed error data:', errorData);
+                } catch (e) {
+                    console.error('[Drive Upload] Failed to parse error response:', e);
+                    console.error('[Drive Upload] Response might not be JSON!');
+                }
+                return null;
+            }
+            
             let result;
             try {
+                // ⚠️⚠️⚠️ CRITICAL: ננסה לפרסר את ה-JSON
+                console.log('[Drive Upload] ⚠️⚠️⚠️ Attempting to parse JSON...');
+                console.log('[Drive Upload] Response text before parse:', responseText);
+                
                 result = JSON.parse(responseText);
+                
+                console.log('[Drive Upload] ✅✅✅ PARSED RESPONSE SUCCESSFULLY!');
+                console.log('[Drive Upload] Response type:', typeof result);
+                console.log('[Drive Upload] Response is array:', Array.isArray(result));
+                console.log('[Drive Upload] Response is null:', result === null);
+                console.log('[Drive Upload] Response keys:', result ? Object.keys(result) : 'null');
+                console.log('[Drive Upload] Response has folder_id:', !!result.folder_id);
+                console.log('[Drive Upload] Response has folder_url:', !!result.folder_url);
+                console.log('[Drive Upload] Response folder_id value:', result.folder_id);
+                console.log('[Drive Upload] Response folder_url value:', result.folder_url);
+                console.log('[Drive Upload] Response success value:', result.success);
+                console.log('[Drive Upload] Response files_count:', result.files_count);
+                console.log('[Drive Upload] Full response object:', result);
+                console.log('[Drive Upload] Full response JSON:', JSON.stringify(result, null, 2));
             } catch (e) {
-                console.error('[Drive Upload] Invalid JSON from server', e, responseText.slice(0, 400));
+                console.error('[Drive Upload] ❌❌❌ FAILED TO PARSE JSON RESPONSE!');
+                console.error('[Drive Upload] Parse error:', e);
+                console.error('[Drive Upload] Parse error message:', e.message);
+                console.error('[Drive Upload] Response text was (full):', responseText);
+                console.error('[Drive Upload] Response text length:', responseText.length);
+                console.error('[Drive Upload] Response text type:', typeof responseText);
                 return null;
             }
+            
+            // בדיקה אם התגובה היא אובייקט או מערך
+            // WordPress REST API אמור להחזיר אובייקט, אבל נבדוק למקרה של edge case
             if (Array.isArray(result)) {
+                console.warn('[Drive Upload] ⚠️ Response is an array, taking first element');
                 result = result[0];
             }
-            if (result && !result.folder_id && result.data && result.data.folder_id) {
-                result = result.data;
+            
+            // בדיקה נוספת - אולי הנתונים נמצאים בתוך wrapper (לא אמור לקרות אבל נבדוק)
+            if (result && typeof result === 'object' && !result.folder_id) {
+                // נבדוק אם יש wrapper כמו data או response
+                if (result.data && result.data.folder_id) {
+                    console.log('[Drive Upload] Found folder_id in result.data, using it');
+                    result = result.data;
+                } else if (result.response && result.response.folder_id) {
+                    console.log('[Drive Upload] Found folder_id in result.response, using it');
+                    result = result.response;
+                }
             }
+            
+            // אם יש folder_id אבל אין folder_url, נבנה את ה-URL
+            if (result && result.folder_id && !result.folder_url) {
+                result.folder_url = 'https://drive.google.com/drive/folders/' + result.folder_id;
+                console.log('[Drive Upload] ✅ Constructed folder_url from folder_id:', result.folder_url);
+            }
+            
+            // אם יש folder_id, נחזיר את התוצאה גם אם success הוא false או חסר
+            // זה חשוב כי גם אם הקבצים לא הועלו, התיקייה עדיין נוצרה
             if (result && result.folder_id) {
+                // אם אין folder_url, נבנה אותו מ-folder_id
                 if (!result.folder_url) {
                     result.folder_url = 'https://drive.google.com/drive/folders/' + result.folder_id;
+                    console.log('[Drive Upload] Constructed folder_url from folder_id:', result.folder_url);
                 }
+                
+                // נסמן כמוצלח כי התיקייה קיימת (גם אם הקבצים לא הועלו)
                 result.success = true;
-                result.upload_success = true;
+                
+                // נוודא שיש ערכים ברירת מחדל
                 result.folder_name = result.folder_name || '';
-                result.files_count = result.files_count != null ? result.files_count : validFiles.length;
-                if (result.files_count === 0 && validFiles.length > 0) {
-                    console.warn('[Drive Upload] Server reported files_count 0');
+                result.files_count = result.files_count || 0;
+                
+                console.log('[Drive Upload] ✅ Success - returning result (folder created):', {
+                    folder_url: result.folder_url,
+                    folder_id: result.folder_id,
+                    folder_name: result.folder_name,
+                    files_count: result.files_count,
+                    success: result.success
+                });
+                
+                // אם הקבצים לא הועלו, נדווח על זה
+                if (result.files_count === 0 && files && files.length > 0) {
+                    console.warn('[Drive Upload] ⚠️ Warning: Folder created but no files were uploaded!', {
+                        expected_files: files.length,
+                        uploaded_files: result.files_count
+                    });
                 }
+                
                 return result;
+            } else {
+                console.error('[Drive Upload] ❌❌❌ CRITICAL ERROR - Response missing folder_id!');
+                console.error('[Drive Upload] Full response object:', result);
+                console.error('[Drive Upload] Response type:', typeof result);
+                console.error('[Drive Upload] Response is array:', Array.isArray(result));
+                console.error('[Drive Upload] Response keys:', result ? Object.keys(result) : 'null');
+                console.error('[Drive Upload] Full response JSON:', JSON.stringify(result, null, 2));
+                
+                // אם יש שגיאה אבל התיקייה עדיין נוצרה, ננסה לבדוק אם יש מידע אחר
+                if (result && result.error) {
+                    console.error('[Drive Upload] Error in response:', result.error);
+                }
+                
+                // ניסיון אחרון - אולי folder_id נמצא במקום אחר?
+                if (result) {
+                    console.error('[Drive Upload] Trying to find folder_id in different places...');
+                    console.error('[Drive Upload] result.data?.folder_id:', result.data?.folder_id);
+                    console.error('[Drive Upload] result.response?.folder_id:', result.response?.folder_id);
+                    console.error('[Drive Upload] result.body?.folder_id:', result.body?.folder_id);
+                }
+                
+                return null;
             }
-            console.error('[Drive Upload] Missing folder_id in response', result);
-            return null;
-        } catch (err) {
-            console.error('[Drive Upload] Network error', err);
+        } catch (error) {
+            console.error('[Drive Upload] ❌❌❌ UNEXPECTED ERROR IN createFolderAndUploadToDrive!');
+            console.error('[Drive Upload] Error type:', error.constructor.name);
+            console.error('[Drive Upload] Error name:', error.name);
+            console.error('[Drive Upload] Error message:', error.message);
+            console.error('[Drive Upload] Error stack:', error.stack);
+            console.error('[Drive Upload] Full error object:', error);
+            
+            // אם זו שגיאת רשת או CORS, נדווח על זה
+            if (error.message && (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('CORS') || error.message.includes('message channel'))) {
+                console.error('[Drive Upload] ⚠️ This looks like a network/CORS/channel error!');
+                console.error('[Drive Upload] Check Network tab in DevTools to see if request was sent');
+                console.error('[Drive Upload] Check if server is responding and CORS headers are correct');
+            }
+            
             return null;
         }
     };
@@ -997,7 +1109,7 @@ if(currentStep === 1){
         payload.name = formData.get('name');
         payload.phone = formData.get('phone');
         payload.notes = formData.get('notes'); payload.what_moving = formData.get('what_moving') || '';
-        payload.terms_approved = formData.get('terms_approved') || '';
+        payload.apartment_rooms = formData.get('apartment_rooms') || '';
 
         payload.utm_source = formData.get('utm_source');
         payload.utm_medium = formData.get('utm_medium');
@@ -1030,50 +1142,130 @@ if(currentStep === 1){
         const isSmallMove = (payload.move_type === 'הובלה קטנה');
 
         if (isSmallMove) {
-            document.querySelectorAll('.mmw-items .row').forEach((row, rowIdx) => {
-                const nameInput = row.querySelector('input[name^="item_name_"]');
-                const qtySelect = row.querySelector('select[name^="item_qty_"]');
-                const itemName = nameInput ? nameInput.value.trim() : '';
-                const itemQty = qtySelect ? qtySelect.value : '';
-                if (!itemName || !itemQty) return;
-
-                const rowImages = Array.isArray(row._itemImages) ? row._itemImages : [];
-                const images = rowImages
-                    .filter((im) => im && im.base64 && im.mime_type && im.mime_type.startsWith('image/'))
-                    .map((im) => ({ image_base64: im.base64, image_type: im.mime_type }));
-
-                const item = {
-                    name: itemName,
-                    quantity: itemQty,
-                    images,
-                    image_base64: images[0] ? images[0].image_base64 : null,
-                    image_type: images[0] ? images[0].image_type : null
-                };
-
-                console.log('[Collect Payload] Item row:', {
-                    rowIdx,
+            document.querySelectorAll('.mmw-items .row').forEach((row, index) => {
+                const itemName = formData.get(`item_name_${index}`);
+                const itemQty = formData.get(`item_qty_${index}`);
+                const previewImg = row.querySelector('.preview');
+                const previewVideo = row.querySelector('.preview-video');
+                
+                console.log('[Collect Payload] Checking row:', {
+                    index,
                     itemName,
                     itemQty,
-                    imageCount: images.length
+                    hasPreviewImg: !!previewImg,
+                    hasPreviewVideo: !!previewVideo,
+                    previewImgSrc: previewImg ? previewImg.src : 'none',
+                    previewVideoSrc: previewVideo ? previewVideo.src : 'none',
+                    previewImgDisplay: previewImg ? window.getComputedStyle(previewImg).display : 'none',
+                    previewVideoDisplay: previewVideo ? window.getComputedStyle(previewVideo).display : 'none'
                 });
-
-                items.push(item);
+                
+                if (itemName && itemQty) {
+                    // בדיקה אם זה תמונה או סרטון
+                    let previewSrc = '';
+                    
+                    // בדיקה קודם כל אם יש video עם data URL (לא דורשים display - רק שיהיה src תקין)
+                    if (previewVideo) {
+                        try {
+                            const videoSrc = previewVideo.src || previewVideo.getAttribute('src') || (previewVideo.currentSrc || '');
+                            console.log('[Collect Payload] Video check:', {
+                                src: videoSrc ? videoSrc.substring(0, 100) : 'none',
+                                hasSrc: !!videoSrc,
+                                startsWithData: videoSrc && typeof videoSrc === 'string' ? videoSrc.startsWith('data:') : false
+                            });
+                            if (videoSrc && typeof videoSrc === 'string' && videoSrc !== '' && videoSrc.startsWith('data:')) {
+                                previewSrc = videoSrc;
+                                console.log('[Collect Payload] ✅ Using video src (data URL found)');
+                            }
+                        } catch (e) {
+                            console.warn('[Collect Payload] Error checking video:', e);
+                        }
+                    }
+                    
+                    // אם אין video, נבדוק תמונה
+                    if (!previewSrc && previewImg) {
+                        try {
+                            const imgSrc = previewImg.src || previewImg.getAttribute('src') || (previewImg.currentSrc || '');
+                            console.log('[Collect Payload] Image check:', {
+                                src: imgSrc ? imgSrc.substring(0, 100) : 'none',
+                                hasSrc: !!imgSrc,
+                                startsWithData: imgSrc && typeof imgSrc === 'string' ? imgSrc.startsWith('data:') : false
+                            });
+                            if (imgSrc && typeof imgSrc === 'string' && imgSrc !== '' && imgSrc.startsWith('data:')) {
+                                previewSrc = imgSrc;
+                                console.log('[Collect Payload] ✅ Using image src (data URL found)');
+                            }
+                        } catch (e) {
+                            console.warn('[Collect Payload] Error checking image:', e);
+                        }
+                    }
+                    
+                    // אם לא מצאנו previewSrc, ננסה לחפש בכל ה-row
+                    if (!previewSrc) {
+                        try {
+                            const allImages = row.querySelectorAll('img.preview, video.preview-video');
+                            console.log('[Collect Payload] Fallback search - found', allImages.length, 'media elements');
+                            for (const media of allImages) {
+                                const mediaSrc = media.src || media.getAttribute('src') || (media.currentSrc || '');
+                                console.log('[Collect Payload] Checking media element:', {
+                                    tagName: media.tagName,
+                                    hasSrc: !!mediaSrc,
+                                    srcLength: mediaSrc ? mediaSrc.length : 0,
+                                    startsWithData: mediaSrc && typeof mediaSrc === 'string' ? mediaSrc.startsWith('data:') : false
+                                });
+                                if (mediaSrc && typeof mediaSrc === 'string' && mediaSrc.startsWith('data:')) {
+                                    previewSrc = mediaSrc;
+                                    console.log('[Collect Payload] ✅ Found media src in fallback search');
+                                    break;
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('[Collect Payload] Error in fallback search:', e);
+                        }
+                    }
+                    
+                    const fileData = extractBase64Image(previewSrc);
+                    
+                    console.log('[Collect Payload] Item result:', {
+                        index,
+                        itemName,
+                        previewSrc: previewSrc ? previewSrc.substring(0, 50) + '...' : 'empty',
+                        hasBase64: !!fileData.base64,
+                        base64Length: fileData.base64 ? fileData.base64.length : 0,
+                        fileType: fileData.type,
+                        fileData: fileData
+                    });
+                    
+                    const item = {
+                        name: itemName,
+                        quantity: itemQty,
+                        image_base64: fileData.base64 || null, // null במקום מחרוזת
+                        image_type: fileData.type || null
+                    };
+                    
+                    items.push(item);
+                }
             });
             payload.items_list = items;
             payload.items_text = items.map(i => `${i.quantity} יח' - ${i.name}`).join(' | ');
             payload.cartons = 'לא רלוונטי';
+            payload.apartment_rooms = '';
         } else { // דירה (גדולה)
             payload.cartons = formData.get('cartons');
             const cartonsValue = payload.cartons;
+            const roomsValue = (payload.apartment_rooms || '').toString().trim();
             
             // אם נבחר "מעביר פריטים בודדים", לטפל בזה כפריטים בודדים
             if (cartonsValue === 'מעביר פריטים בודדים') {
+                payload.apartment_rooms = '';
                 payload.items_list = 'פריטים בודדים';
                 payload.items_text = 'מעביר פריטים בודדים' + 
                     (payload.what_moving ? ' | פירוט: ' + payload.what_moving : '');
             } else {
                 payload.items_list = 'דירה + ' + cartonsValue;
-                payload.items_text = 'הובלת דירה - ' + cartonsValue +
+                payload.items_text =
+                    'הובלת דירה - ' + cartonsValue +
+                    (roomsValue ? ' | חדרים: ' + roomsValue : '') +
                     (payload.what_moving ? ' | פירוט: ' + payload.what_moving : '');
             }
 
@@ -1089,7 +1281,7 @@ if(currentStep === 1){
         return payload;
     };
 
-    /** שליחת הנתונים לוובהוק Make */
+    /** שליחת הנתונים ל-Make ול-Responder */
     const sendData = async (payload) => {
         // נוודא שהשדות תמיד קיימים (אם לא, נוסיף אותם עם ערכים ריקים)
         if (typeof payload.drive_folder_url === 'undefined') {
@@ -1122,35 +1314,53 @@ if(currentStep === 1){
             drive_folder_name: payload.drive_folder_name,
             drive_files_count: payload.drive_files_count
         });
-
-        const payloadForWebhook = { ...payload };
-        delete payloadForWebhook.items_list;
-
-        let bodyString;
+        
         try {
-            bodyString = JSON.stringify(payloadForWebhook);
-        } catch (err) {
-            console.error('[Send Data] JSON.stringify נכשל (payload לוובהוק):', err);
-            return;
-        }
+            // Make: לא לשלוח apartment_rooms בלי מספר תקף — מניעת נפילה בסכימה/מודול מספרי
+            const makePayload = { ...payload };
+            const roomsRaw = makePayload.apartment_rooms;
+            const roomsStr = roomsRaw == null ? '' : String(roomsRaw).trim();
+            const roomsNum = roomsStr === '' ? NaN : Number(roomsStr);
+            if (!Number.isFinite(roomsNum) || roomsNum <= 0) {
+                delete makePayload.apartment_rooms;
+            } else {
+                makePayload.apartment_rooms = roomsStr;
+            }
 
-        const webhookUrl = 'https://hook.us1.make.com/wgko3er3c8r5mz8vv9llqwjza49jedfm';
-
-        try {
-            const response = await fetch(webhookUrl, {
+            const response = await fetch('https://hook.us1.make.com/wgko3er3c8r5mz8vv9llqwjza49jedfm', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: bodyString,
+                body: JSON.stringify(makePayload)
             });
-
+            
             if (response.ok) {
                 console.log('[Send Data] Successfully sent to Make webhook');
             } else {
-                const errText = await response.text().catch(() => '');
-                console.error('[Send Data] Failed to send to Make webhook, status:', response.status, errText ? errText.slice(0, 500) : '');
+                console.error('[Send Data] Failed to send to Make webhook, status:', response.status);
             }
         } catch (e) {
-            console.error('שגיאה בשליחה ל-Make:', e);
+            console.error("שגיאה בשליחה ל-Make:", e);
+        }
+
+        try {
+            const r = new URLSearchParams();
+            r.append('fname', payload.name);
+            r.append('phone', payload.phone);
+            r.append('custom_3', payload.items_text); 
+            r.append('custom_4', payload.date);
+            r.append('custom_5', payload.pickup + ' > ' + payload.dropoff); 
+            r.append('form_id', '2810431');
+            r.append('action', 'subscribe');
+            r.append('list', '1'); 
+
+            await fetch('https://subscribe.responder.co.il', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                body: r.toString(),
+                mode: 'no-cors'
+            });
+        } catch (e) {
+            console.error("שגיאה בשליחה ל-Responder:", e);
         }
     };
     
@@ -1173,10 +1383,9 @@ if(currentStep === 1){
           // =========================
           // 🔹 PREPARE META DATA
           // =========================
-          const eventId =
-            typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-              ? crypto.randomUUID()
-              : 'eid-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+          const eventId = crypto.randomUUID
+          ? crypto.randomUUID()
+          : 'eid-' + Date.now() + '-' + Math.random().toString(16).slice(2);
           setField(form, 'event_id', eventId);
           sessionStorage.setItem('liftygo_event_id', eventId);
           document.cookie = 'liftygo_event_id=' + encodeURIComponent(eventId) + '; path=/; max-age=7200';
@@ -1193,54 +1402,65 @@ if(currentStep === 1){
           console.log('[LIFTYGO] submit prepared', { eventId, fbp, fbc });
         
         loaderTitle.textContent = 'התחלנו להזיז לך את ההובלה!';
-        loaderSubtitle.textContent = 'מעלים תמונות לגוגל דרייב...';
+        loaderSubtitle.textContent = 'מעלים תמונות וסרטונים לגוגל דרייב...';
         loader.classList.remove('quick-load'); 
         loader.classList.add('show');
         document.getElementById('mmwSubmit').classList.add('mmw-disabled');
 
         const payload = collectPayload();
         
-        // העלאת תמונות לגוגל דרייב לפני שליחת הטופס
+        // העלאת תמונות/סרטונים לגוגל דרייב לפני שליחת הטופס
         const isSmallMove = (payload.move_type === 'הובלה קטנה');
         let driveFolderInfo = null;
         
         if (isSmallMove && payload.items_list && Array.isArray(payload.items_list)) {
             console.log('[Form Submit] Items list:', payload.items_list);
             
+            // איסוף כל הקבצים להעלאה
             const filesToUpload = [];
             
-            payload.items_list.forEach((item, itemIndex) => {
-                const base = safeDriveBaseName(item.name);
-                const imgs = Array.isArray(item.images) && item.images.length
-                    ? item.images
-                    : (item.image_base64 && item.image_type
-                        ? [{ image_base64: item.image_base64, image_type: item.image_type }]
-                        : []);
-
-                imgs.forEach((im, imgIdx) => {
-                    const b64 = im.image_base64;
-                    const mime = im.image_type;
-                    if (!b64 || b64 === 'אין תמונה/סרטון' || !mime || !mime.startsWith('image/')) return;
-
-                    const filename = `${base}_${imgIdx + 1}.jpg`;
-
-                    console.log('[Form Submit] Adding file to upload:', {
-                        filename,
-                        mime_type: mime,
-                        base64_length: b64.length,
-                        itemIndex,
-                        imgIdx
-                    });
-
-                    filesToUpload.push({
-                        base64: b64,
-                        filename,
-                        mime_type: mime
-                    });
+            payload.items_list.forEach((item, index) => {
+                console.log('[Form Submit] Processing item:', {
+                    index,
+                    name: item.name,
+                    hasBase64: !!item.image_base64,
+                    base64Value: item.image_base64 ? item.image_base64.substring(0, 50) + '...' : 'empty',
+                    imageType: item.image_type,
+                    isValid: item.image_base64 && item.image_base64 !== 'אין תמונה/סרטון' && item.image_type
                 });
-
-                if (!imgs.length) {
-                    console.warn('[Form Submit] Item has no images:', { itemIndex, name: item.name });
+                
+                // בדיקה מפורשת יותר - רק אם יש base64 אמיתי ו-type
+                if (item.image_base64 && 
+                    item.image_base64 !== 'אין תמונה/סרטון' && 
+                    item.image_base64 !== null &&
+                    item.image_base64 !== '' &&
+                    item.image_type && 
+                    item.image_type !== null) {
+                    
+                    const isVideo = item.image_type.startsWith('video/');
+                    const fileExtension = item.image_type.split('/')[1] || (isVideo ? 'mp4' : 'jpg');
+                    const filename = `${item.name.replace(/[^a-z0-9]/gi, '_')}_${index + 1}.${fileExtension}`;
+                    
+                    console.log('[Form Submit] Adding file to upload:', {
+                        filename: filename,
+                        mime_type: item.image_type,
+                        base64_length: item.image_base64.length,
+                        base64_preview: item.image_base64.substring(0, 50) + '...'
+                    });
+                    
+                    filesToUpload.push({
+                        base64: item.image_base64,
+                        filename: filename,
+                        mime_type: item.image_type
+                    });
+                } else {
+                    console.warn('[Form Submit] Skipping item (no valid file):', {
+                        index,
+                        name: item.name,
+                        hasBase64: !!item.image_base64,
+                        base64Value: item.image_base64 ? (typeof item.image_base64 === 'string' ? item.image_base64.substring(0, 30) + '...' : 'not string') : 'null',
+                        imageType: item.image_type
+                    });
                 }
             });
             
@@ -1256,8 +1476,7 @@ if(currentStep === 1){
             if (filesToUpload.length === 0) {
                 console.warn('[Form Submit] ⚠️⚠️⚠️ NO FILES TO UPLOAD!');
                 console.warn('[Form Submit] Items list length:', payload.items_list ? payload.items_list.length : 0);
-                console.warn('[Form Submit] Items with images:', payload.items_list ? payload.items_list.filter(item =>
-                    (item.images && item.images.length) || item.image_base64).length : 0);
+                console.warn('[Form Submit] Items with images:', payload.items_list ? payload.items_list.filter(item => item.image_base64).length : 0);
                 console.warn('[Form Submit] All items:', payload.items_list);
             }
             
@@ -1288,10 +1507,7 @@ if(currentStep === 1){
                         orderDate,
                         filesToUpload
                     );
-                    console.log('[Form Submit] createFolderAndUploadToDrive RETURNED', {
-                        ok: !!(driveFolderInfo && driveFolderInfo.folder_id),
-                        upload_success: driveFolderInfo ? driveFolderInfo.upload_success !== false : null
-                    });
+                    console.log('[Form Submit] ⚠️⚠️⚠️ createFolderAndUploadToDrive RETURNED - SUCCESS');
                 } catch (error) {
                     console.error('[Form Submit] ❌❌❌ ERROR in createFolderAndUploadToDrive:', error);
                     console.error('[Form Submit] Error type:', error.constructor.name);
@@ -1314,18 +1530,12 @@ if(currentStep === 1){
                         console.log('[Form Submit] ✅ Constructed folder_url from folder_id:', driveFolderInfo.folder_url);
                     }
                     
-                    if (driveFolderInfo.upload_success === false) {
-                        loaderSubtitle.textContent =
-                            'נוצרה תיקייה בדרייב ללא תמונות — השליחה נמשכת; הקישור יגיע למייק. בדוק בדרייב / לוגים.';
-                    } else {
-                        loaderSubtitle.textContent = 'תיקייה נוצרה בהצלחה! שולחים את פרטי ההזמנה...';
-                    }
+                    loaderSubtitle.textContent = 'תיקייה נוצרה בהצלחה! שולחים את פרטי ההזמנה...';
                     console.log('[Form Submit] ✅ Drive folder created successfully:', {
                         folder_url: driveFolderInfo.folder_url,
                         folder_id: driveFolderInfo.folder_id,
                         folder_name: driveFolderInfo.folder_name,
-                        files_count: driveFolderInfo.files_count || 0,
-                        upload_success: driveFolderInfo.upload_success !== false
+                        files_count: driveFolderInfo.files_count || 0
                     });
                     if (driveFolderInfo.upload_success === false && driveFolderInfo.upload_error) {
                         console.warn('[Form Submit] ⚠️ Image upload to Drive failed:', driveFolderInfo.upload_error.message || driveFolderInfo.upload_error);
@@ -1379,15 +1589,15 @@ if(currentStep === 1){
             });
         }
         
-        console.log('[Form Submit] Final payload keys:', Object.keys(payload), 'items_list length:',
-            Array.isArray(payload.items_list) ? payload.items_list.length : 'n/a');
+        console.log('[Form Submit] Final payload:', payload);
         
         loaderSubtitle.textContent = 'שולחים את פרטי ההזמנה שלך למובילים מומלצים.';
         await sendData(payload);
 
+        await new Promise(resolve => setTimeout(resolve, 3000)); 
+
         const eid = payload.event_id || sessionStorage.getItem('liftygo_event_id') || '';
         const tnxUrl = 'https://liftygo.co.il/tnx' + (eid ? '/?event_id=' + encodeURIComponent(eid) : '');
-        loaderSubtitle.textContent = 'מעבירים אותך לדף התודה...';
         window.location.href = tnxUrl;
     });
 
@@ -1396,6 +1606,7 @@ if(currentStep === 1){
     const step3 = document.querySelector('[data-step="3"]');
     if (step2) toggleAccessFields(step2);
     if (step3) toggleAccessFields(step3);
+    syncApartmentRoomsField();
 // 🔁 תיקון חזרה אחורה בדפדפן (BFCache)
 window.addEventListener('pageshow', () => {
   // סנכרון move_type
@@ -1405,6 +1616,7 @@ window.addEventListener('pageshow', () => {
     updateChipState(selectedMove);
     toggleContentStep(moveType);
   }
+  syncApartmentRoomsField();
 
   // סנכרון כל הצ'יפים המסומנים
   document.querySelectorAll('.mmw-chip input:checked').forEach(input => {
@@ -1546,10 +1758,4 @@ dropoffInput.addEventListener('input', () => {
 
 
     updateProgress();
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', liftygoMmwInit);
-} else {
-    liftygoMmwInit();
-}
+});
