@@ -70,6 +70,27 @@ body{
   display:none;
 }
 
+.mmw-route-hint{
+  text-align:right;
+  margin-bottom:12px;
+}
+.mmw-route-block{
+  margin-top:18px;
+  padding-top:14px;
+  border-top:1px solid var(--line);
+}
+.mmw-route-block:first-of-type{
+  margin-top:6px;
+  padding-top:0;
+  border-top:0;
+}
+.mmw-route-block-title{
+  font-size:17px;
+  font-weight:700;
+  color:var(--text);
+  margin:0 0 10px;
+}
+
 .mmw-note{
   color:var(--muted); 
   font-size:12px; 

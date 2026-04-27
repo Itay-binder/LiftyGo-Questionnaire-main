@@ -238,6 +238,9 @@ const generateOrderId = () => {
         });
     };
 
+    const syncPropertyAccessScopes = () => {
+        document.querySelectorAll('[data-mmw-access-scope]').forEach((scope) => toggleAccessFields(scope));
+    };
 
     // מניעת שליחה באמצעות Enter בשלבים שאינם האחרון
     // אבל לא מפריעים ל-Google Places Autocomplete לבחור כתובת
@@ -349,9 +352,9 @@ const generateOrderId = () => {
             moveType = null;
         }
 
-        // הפעלת הלוגיקה הדינמית לאחר המעבר לשלב 2 או 3 (איסוף או יעד)
-        if (currentStep === 2 || currentStep === 3) {
-             toggleAccessFields(steps[currentStep - 1]);
+        // שלב 3: סוג נכס / קומה / נגישות — לכל צד בנפרד
+        if (currentStep === 3) {
+            syncPropertyAccessScopes();
         }
         
         updateProgress();
@@ -426,17 +429,161 @@ const generateOrderId = () => {
         }
     };
     
-    /** ולידציה של השלב הנוכחי */
-    const validateStep = (step, skipPlaceCheck = false) => {
+    /** בדיקת כתובת איסוף מול Google Places */
+    const validateGooglePickupAddress = () => {
+        const pickupInput = document.querySelector('input[name="pickup"]');
+
+        if (pickupPlace && pickupPlace.formatted_address && pickupInput && pickupInput.value.trim()) {
+            if (pickupInput.value.trim() !== pickupPlace.formatted_address.trim()) {
+                pickupPlace = null;
+                pickupInput.setCustomValidity('אנא בחר כתובת איסוף מתוך ההצעות של גוגל');
+                pickupInput.reportValidity();
+                return false;
+            }
+        }
+
+        if (!pickupPlace && pickupInput && pickupInput.value.trim()) {
+            if (pickupAutocomplete) {
+                try {
+                    const place = pickupAutocomplete.getPlace();
+                    if (place && place.geometry) {
+                        pickupPlace = place;
+                    } else {
+                        const pacContainer = document.querySelector('.pac-container');
+                        const isPacVisible = pacContainer && pacContainer.style.display !== 'none' &&
+                            pacContainer.children.length > 0;
+                        if (!isPacVisible) {
+                            if (pickupInput) {
+                                pickupInput.setCustomValidity('אנא בחר כתובת איסוף מתוך ההצעות של גוגל');
+                                pickupInput.reportValidity();
+                            }
+                            return false;
+                        }
+                        return false;
+                    }
+                } catch (e) {
+                    const pacContainer = document.querySelector('.pac-container');
+                    const isPacVisible = pacContainer && pacContainer.style.display !== 'none' &&
+                        pacContainer.children.length > 0;
+                    if (!isPacVisible) {
+                        if (pickupInput) {
+                            pickupInput.setCustomValidity('אנא בחר כתובת איסוף מתוך ההצעות של גוגל');
+                            pickupInput.reportValidity();
+                        }
+                        return false;
+                    }
+                    return false;
+                }
+            } else {
+                if (!pickupInput.value.trim()) {
+                    pickupInput.setCustomValidity('אנא בחר כתובת איסוף מתוך ההצעות של גוגל');
+                    pickupInput.reportValidity();
+                    return false;
+                }
+            }
+        } else if (!pickupPlace) {
+            const pacContainer = document.querySelector('.pac-container');
+            const isPacVisible = pacContainer && pacContainer.style.display !== 'none' &&
+                pacContainer.children.length > 0;
+            if (!isPacVisible) {
+                if (pickupInput) {
+                    pickupInput.setCustomValidity('אנא בחר כתובת איסוף מתוך ההצעות של גוגל');
+                    pickupInput.reportValidity();
+                }
+            }
+            return false;
+        }
+
+        return true;
+    };
+
+    /** בדיקת כתובת יעד מול Google Places */
+    const validateGoogleDropoffAddress = () => {
+        const dropoffInput = document.querySelector('input[name="dropoff"]');
+
+        if (dropoffPlace && dropoffPlace.formatted_address && dropoffInput && dropoffInput.value.trim()) {
+            if (dropoffInput.value.trim() !== dropoffPlace.formatted_address.trim()) {
+                dropoffPlace = null;
+                dropoffInput.setCustomValidity('אנא בחר כתובת יעד מתוך ההצעות של גוגל');
+                dropoffInput.reportValidity();
+                return false;
+            }
+        }
+
+        if (!dropoffPlace && dropoffInput && dropoffInput.value.trim()) {
+            if (dropoffAutocomplete) {
+                try {
+                    const place = dropoffAutocomplete.getPlace();
+                    if (place && place.geometry) {
+                        dropoffPlace = place;
+                    } else {
+                        const pacContainer = document.querySelector('.pac-container');
+                        const isPacVisible = pacContainer && pacContainer.style.display !== 'none' &&
+                            pacContainer.children.length > 0;
+                        if (!isPacVisible) {
+                            if (dropoffInput) {
+                                dropoffInput.setCustomValidity('אנא בחר כתובת יעד מתוך ההצעות של גוגל');
+                                dropoffInput.reportValidity();
+                            }
+                            return false;
+                        }
+                        return false;
+                    }
+                } catch (e) {
+                    const pacContainer = document.querySelector('.pac-container');
+                    const isPacVisible = pacContainer && pacContainer.style.display !== 'none' &&
+                        pacContainer.children.length > 0;
+                    if (!isPacVisible) {
+                        if (dropoffInput) {
+                            dropoffInput.setCustomValidity('אנא בחר כתובת יעד מתוך ההצעות של גוגל');
+                            dropoffInput.reportValidity();
+                        }
+                        return false;
+                    }
+                    return false;
+                }
+            } else {
+                if (!dropoffInput.value.trim()) {
+                    dropoffInput.setCustomValidity('אנא בחר כתובת יעד מתוך ההצעות של גוגל');
+                    dropoffInput.reportValidity();
+                    return false;
+                }
+            }
+        } else if (!dropoffPlace) {
+            const pacContainer = document.querySelector('.pac-container');
+            const isPacVisible = pacContainer && pacContainer.style.display !== 'none' &&
+                pacContainer.children.length > 0;
+            if (!isPacVisible) {
+                if (dropoffInput) {
+                    dropoffInput.setCustomValidity('אנא בחר כתובת יעד מתוך ההצעות של גוגל');
+                    dropoffInput.reportValidity();
+                }
+            }
+            return false;
+        }
+
+        return true;
+    };
+
+    /** ולידציה של השלב הנוכחי — placeOpts: true (דילוג על שתי הכתובות), או { skipPickupPlace, skipDropoffPlace } */
+    const validateStep = (step, placeOpts) => {
         if (skipMoveTypeStep && step === 1) return true;
+
+        let skipPickupPlace = false;
+        let skipDropoffPlace = false;
+        if (placeOpts === true) {
+            skipPickupPlace = true;
+            skipDropoffPlace = true;
+        } else if (placeOpts && typeof placeOpts === 'object') {
+            skipPickupPlace = !!placeOpts.skipPickupPlace;
+            skipDropoffPlace = !!placeOpts.skipDropoffPlace;
+        }
 
         const currentStepElement = steps[step - 1];
         let isValid = true;
-        
-        // אם יש pending navigation לשלב הזה, נדלג על בדיקת הכתובת
-        // כי זה אומר ש-place_changed עדיין לא התעדכן
+
         const hasPendingNav = pendingNavigation && pendingNavigation.step === step;
-        const shouldSkipPlaceCheck = skipPlaceCheck || hasPendingNav;
+        const skipAllGooglePlaces = hasPendingNav || placeOpts === true;
         
         const requiredInputs = currentStepElement.querySelectorAll('[required]');
         requiredInputs.forEach(input => {
@@ -459,159 +606,13 @@ const generateOrderId = () => {
                 isValid = false;
             }
         });
-         // ✅ בדיקה מחייבת לבחירה מגוגל – בשלב 2 (איסוף) ו-3 (יעד)
-         // אם shouldSkipPlaceCheck הוא true, נדלג על הבדיקה
-  if (!shouldSkipPlaceCheck) {
-    if (step === 2) {
-      const pickupInput = document.querySelector('input[name="pickup"]');
-      
-      // בדיקה: אם יש pickupPlace, נבדוק שהערך ב-input תואם את הערך שנבחר
-      if (pickupPlace && pickupPlace.formatted_address && pickupInput && pickupInput.value.trim()) {
-        if (pickupInput.value.trim() !== pickupPlace.formatted_address.trim()) {
-          // הערך השתנה - נאפס את pickupPlace ונציג הודעה
-          pickupPlace = null;
-          pickupInput.setCustomValidity('אנא בחר כתובת איסוף מתוך ההצעות של גוגל');
-          pickupInput.reportValidity();
-          return false;
+
+        // כתובות Google — בשלב 2 יחד (איסוף + יעד)
+        if (!skipAllGooglePlaces && step === 2) {
+            if (!skipPickupPlace && !validateGooglePickupAddress()) return false;
+            if (!skipDropoffPlace && !validateGoogleDropoffAddress()) return false;
         }
-      }
-      
-      // אם יש ערך ב-input אבל אין pickupPlace, ננסה לקבל את ה-place ישירות מה-autocomplete
-      if (!pickupPlace && pickupInput && pickupInput.value.trim()) {
-        if (pickupAutocomplete) {
-          try {
-            const place = pickupAutocomplete.getPlace();
-            if (place && place.geometry) {
-              pickupPlace = place;
-            } else {
-              // אם עדיין אין place, נבדוק אם יש רשימה פתוחה (משתמש בחר אבל place_changed עוד לא התבצע)
-              const pacContainer = document.querySelector('.pac-container');
-              const isPacVisible = pacContainer && pacContainer.style.display !== 'none' && 
-                                   pacContainer.children.length > 0;
-              if (!isPacVisible) {
-                if (pickupInput) {
-                  pickupInput.setCustomValidity('אנא בחר כתובת איסוף מתוך ההצעות של גוגל');
-                  pickupInput.reportValidity();
-                }
-                return false;
-              }
-              // אם יש רשימה פתוחה, נמתין קצת - place_changed יתבצע בקרוב
-              return false; // נחזיר false כדי למנוע ניווט, place_changed יבצע את הניווט אחר כך
-            }
-          } catch (e) {
-            // אם יש שגיאה, נבדוק אם יש רשימה פתוחה
-            const pacContainer = document.querySelector('.pac-container');
-            const isPacVisible = pacContainer && pacContainer.style.display !== 'none' && 
-                                 pacContainer.children.length > 0;
-            if (!isPacVisible) {
-              if (pickupInput) {
-                pickupInput.setCustomValidity('אנא בחר כתובת איסוף מתוך ההצעות של גוגל');
-                pickupInput.reportValidity();
-              }
-              return false;
-            }
-            return false; // נמתין ל-place_changed
-          }
-        } else {
-          // אם אין autocomplete עדיין, נבדוק אם יש ערך
-          if (!pickupInput.value.trim()) {
-            pickupInput.setCustomValidity('אנא בחר כתובת איסוף מתוך ההצעות של גוגל');
-            pickupInput.reportValidity();
-            return false;
-          }
-        }
-      } else if (!pickupPlace) {
-        // לפני הצגת הודעה, נבדוק אם יש רשימה פתוחה (משתמש בחר אבל place_changed עוד לא התבצע)
-        const pacContainer = document.querySelector('.pac-container');
-        const isPacVisible = pacContainer && pacContainer.style.display !== 'none' && 
-                             pacContainer.children.length > 0;
-        if (!isPacVisible) {
-          // אין רשימה פתוחה - נציג הודעה
-          if (pickupInput) {
-            pickupInput.setCustomValidity('אנא בחר כתובת איסוף מתוך ההצעות של גוגל');
-            pickupInput.reportValidity();
-          }
-        }
-        // אם יש רשימה פתוחה, נמתין ל-place_changed (לא נציג הודעה)
-        return false;
-      }
-    }
-    if (step === 3) {
-      const dropoffInput = document.querySelector('input[name="dropoff"]');
-      
-      // בדיקה: אם יש dropoffPlace, נבדוק שהערך ב-input תואם את הערך שנבחר
-      if (dropoffPlace && dropoffPlace.formatted_address && dropoffInput && dropoffInput.value.trim()) {
-        if (dropoffInput.value.trim() !== dropoffPlace.formatted_address.trim()) {
-          // הערך השתנה - נאפס את dropoffPlace ונציג הודעה
-          dropoffPlace = null;
-          dropoffInput.setCustomValidity('אנא בחר כתובת יעד מתוך ההצעות של גוגל');
-          dropoffInput.reportValidity();
-          return false;
-        }
-      }
-      
-      // אם יש ערך ב-input אבל אין dropoffPlace, ננסה לקבל את ה-place ישירות מה-autocomplete
-      if (!dropoffPlace && dropoffInput && dropoffInput.value.trim()) {
-        if (dropoffAutocomplete) {
-          try {
-            const place = dropoffAutocomplete.getPlace();
-            if (place && place.geometry) {
-              dropoffPlace = place;
-            } else {
-              // אם עדיין אין place, נבדוק אם יש רשימה פתוחה (משתמש בחר אבל place_changed עוד לא התבצע)
-              const pacContainer = document.querySelector('.pac-container');
-              const isPacVisible = pacContainer && pacContainer.style.display !== 'none' && 
-                                   pacContainer.children.length > 0;
-              if (!isPacVisible) {
-                if (dropoffInput) {
-                  dropoffInput.setCustomValidity('אנא בחר כתובת יעד מתוך ההצעות של גוגל');
-                  dropoffInput.reportValidity();
-                }
-                return false;
-              }
-              // אם יש רשימה פתוחה, נמתין קצת - place_changed יתבצע בקרוב
-              return false; // נחזיר false כדי למנוע ניווט, place_changed יבצע את הניווט אחר כך
-            }
-          } catch (e) {
-            // אם יש שגיאה, נבדוק אם יש רשימה פתוחה
-            const pacContainer = document.querySelector('.pac-container');
-            const isPacVisible = pacContainer && pacContainer.style.display !== 'none' && 
-                                 pacContainer.children.length > 0;
-            if (!isPacVisible) {
-              if (dropoffInput) {
-                dropoffInput.setCustomValidity('אנא בחר כתובת יעד מתוך ההצעות של גוגל');
-                dropoffInput.reportValidity();
-              }
-              return false;
-            }
-            return false; // נמתין ל-place_changed
-          }
-        } else {
-          // אם אין autocomplete עדיין, נבדוק אם יש ערך
-          if (!dropoffInput.value.trim()) {
-            dropoffInput.setCustomValidity('אנא בחר כתובת יעד מתוך ההצעות של גוגל');
-            dropoffInput.reportValidity();
-            return false;
-          }
-        }
-      } else if (!dropoffPlace) {
-        // לפני הצגת הודעה, נבדוק אם יש רשימה פתוחה (משתמש בחר אבל place_changed עוד לא התבצע)
-        const pacContainer = document.querySelector('.pac-container');
-        const isPacVisible = pacContainer && pacContainer.style.display !== 'none' && 
-                             pacContainer.children.length > 0;
-        if (!isPacVisible) {
-          // אין רשימה פתוחה - נציג הודעה
-          if (dropoffInput) {
-            dropoffInput.setCustomValidity('אנא בחר כתובת יעד מתוך ההצעות של גוגל');
-            dropoffInput.reportValidity();
-          }
-        }
-        // אם יש רשימה פתוחה, נמתין ל-place_changed (לא נציג הודעה)
-        return false;
-      }
-    }
-  }
-        
+
         const isSmallMove = (moveType === 'הובלה קטנה');
 
         if (step === 4 && isSmallMove) {
@@ -670,7 +671,9 @@ const generateOrderId = () => {
             
             // *** לוגיקה דינמית לבית קרקע / בניין ***
             if (e.target.closest('[data-section="property-type"]')) {
-                toggleAccessFields(e.target.closest('.mmw-step'));
+                const scope = e.target.closest('[data-mmw-access-scope]');
+                if (scope) toggleAccessFields(scope);
+                else toggleAccessFields(e.target.closest('.mmw-step'));
             }
             // *** סוף לוגיקה דינמית ***
 
@@ -1644,8 +1647,6 @@ const generateOrderId = () => {
     });
 
     // ודא שהלוגיקה הדינמית פועלת גם בטעינת הדף (כאשר אין בחירה ראשונית)
-    const step2 = document.querySelector('[data-step="2"]');
-    const step3 = document.querySelector('[data-step="3"]');
     if (skipMoveTypeStep) {
         const aptRadio = document.querySelector('input[name="move_type"][value="הובלת דירה"]');
         if (aptRadio) {
@@ -1660,8 +1661,7 @@ const generateOrderId = () => {
             el.classList.toggle('active', n === currentStep);
         });
     }
-    if (step2) toggleAccessFields(step2);
-    if (step3) toggleAccessFields(step3);
+    syncPropertyAccessScopes();
     syncApartmentRoomsField();
 // 🔁 תיקון חזרה אחורה בדפדפן (BFCache)
 window.addEventListener('pageshow', () => {
@@ -1693,11 +1693,7 @@ window.addEventListener('pageshow', () => {
     updateChipState(input);
   });
 
-  // סנכרון שלבים 2–3 (איסוף ויעד)
-  const step2 = document.querySelector('[data-step="2"]');
-  const step3 = document.querySelector('[data-step="3"]');
-  if (step2) toggleAccessFields(step2);
-  if (step3) toggleAccessFields(step3);
+  syncPropertyAccessScopes();
 
   updateProgress();
 });
@@ -1737,20 +1733,17 @@ pickupAutocomplete.addListener("place_changed", () => {
   // ניקוי ה-custom validity כדי שההודעה תיעלם
   pickupInput.setCustomValidity('');
   
-  // אם יש pending navigation לשלב 2, נבצע אותו עכשיו
+  // אם יש pending navigation לשלב 2, נבצע אותו עכשיו (רק אם גם יעד תקין)
   if (pendingNavigation && pendingNavigation.step === 2) {
-    // הערך כבר עודכן, אז נדלג על בדיקת הכתובת בולידציה
-    const nav = pendingNavigation;
-    pendingNavigation = null; // נבטל את ה-pending לפני הולידציה כדי למנוע race condition
-    
-    // משתמשים ב-requestAnimationFrame כדי לוודא שהערך עודכן ב-DOM
+    pendingNavigation = null;
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setTimeout(() => {
-          if (validateStep(2, true)) { // skipPlaceCheck = true כי הערך כבר עודכן
+          if (validateStep(2, { skipPickupPlace: true })) {
             navigate(1);
           }
-        }, 50); // delay קצר כדי לוודא שהערך עודכן ב-DOM
+        }, 50);
       });
     });
   }
@@ -1762,7 +1755,7 @@ dropoffAutocomplete.addListener("place_changed", () => {
   if (!place || !place.geometry) {
     dropoffPlace = null;
     // אם יש pending navigation אבל הבחירה נכשלה, נבטל אותו
-    if (pendingNavigation && pendingNavigation.step === 3) {
+    if (pendingNavigation && pendingNavigation.step === 2) {
       pendingNavigation = null;
     }
     return;
@@ -1773,20 +1766,16 @@ dropoffAutocomplete.addListener("place_changed", () => {
   // ניקוי ה-custom validity כדי שההודעה תיעלם
   dropoffInput.setCustomValidity('');
   
-  // אם יש pending navigation לשלב 3, נבצע אותו עכשיו
-  if (pendingNavigation && pendingNavigation.step === 3) {
-    // הערך כבר עודכן, אז נדלג על בדיקת הכתובת בולידציה
-    const nav = pendingNavigation;
-    pendingNavigation = null; // נבטל את ה-pending לפני הולידציה כדי למנוע race condition
-    
-    // משתמשים ב-requestAnimationFrame כדי לוודא שהערך עודכן ב-DOM
+  if (pendingNavigation && pendingNavigation.step === 2) {
+    pendingNavigation = null;
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setTimeout(() => {
-          if (validateStep(3, true)) { // skipPlaceCheck = true כי הערך כבר עודכן
+          if (validateStep(2, { skipDropoffPlace: true })) {
             navigate(1);
           }
-        }, 50); // delay קצר כדי לוודא שהערך עודכן ב-DOM
+        }, 50);
       });
     });
   }

@@ -125,35 +125,15 @@
     </div>
     
     <div class="mmw-step active" data-step="2">
-      <h3>איסוף</h3>
+      <h3>מאיפה לאיפה</h3>
+      <p class="mmw-note mmw-route-hint">בחרו כתובת איסוף וכתובת יעד מתוך ההצעות של גוגל.</p>
       <div class="mmw-field">
         <label class="mmw-label">כתובת איסוף</label>
         <input class="mmw-input" name="pickup" placeholder="כתובת איסוף" required />
       </div>
-      <div class="mmw-field" data-section="property-type">
-        <label class="mmw-label">סוג נכס (איסוף)</label>
-        <div class="mmw-checks" data-group="pickup_type">
-          <label class="mmw-chip"><input type="radio" name="pickup_type" value="בית קרקע" data-access-control="hide" /> בית קרקע</label>
-          <label class="mmw-chip"><input type="radio" name="pickup_type" value="בניין" data-access-control="show" /> בניין</label>
-        </div>
-      </div>
-
-      <div class="mmw-field" data-section="floor" data-type="building" style="display:none;"> 
-        <label class="mmw-label">קומה (איסוף)</label>
-        <select class="mmw-select" name="pickup_floor"></select>
-      </div>
-
-      <div class="mmw-field" data-section="access" data-type="building" style="display:none;"> 
-        <label class="mmw-label">נגישות (איסוף)</label>
-        <div class="mmw-checks" data-group="pickup_access">
-          <label class="mmw-chip"><input type="radio" name="pickup_access" value="מעלית (פריט נכנס)" /> מעלית (פריט נכנס)</label>
-          <label class="mmw-chip"><input type="radio" name="pickup_access" value="מעלית קטנה (פריט לא נכנס)" /> מעלית קטנה (פריט לא נכנס)</label>
-          <label class="mmw-chip"><input type="radio" name="pickup_access" value="מדרגות בלבד" /> מדרגות בלבד</label>
-          <label class="mmw-chip"><input type="radio" name="pickup_access" value="מספר מדרגות בכניסה" /> מספר מדרגות בכניסה</label>
-          <label class="mmw-chip"><input type="radio" name="pickup_access" value="שביל ארוך / כניסה לא ישירה" /> שביל ארוך / כניסה לא ישירה</label>
-          <label class="mmw-chip" data-free-text="pickup_access_other"><input type="radio" name="pickup_access" value="אחר" /> אחר</label>
-        </div>
-        <input class="mmw-input" type="text" name="pickup_access_other" placeholder="תיאור קצר" style="display:none; margin-top:5px" />
+      <div class="mmw-field">
+        <label class="mmw-label">כתובת יעד</label>
+        <input class="mmw-input" name="dropoff" placeholder="כתובת יעד" required />
       </div>
 
       <div class="mmw-actions">
@@ -163,35 +143,61 @@
     </div>
 
     <div class="mmw-step" data-step="3">
-      <h3>יעד</h3>
-      <div class="mmw-field">
-        <label class="mmw-label">כתובת יעד</label>
-        <input class="mmw-input" name="dropoff" placeholder="כתובת יעד" required />
-      </div>
-      <div class="mmw-field" data-section="property-type">
-        <label class="mmw-label">סוג נכס (יעד)</label>
-        <div class="mmw-checks" data-group="drop_type">
-          <label class="mmw-chip"><input type="radio" name="drop_type" value="בית קרקע" data-access-control="hide" /> בית קרקע</label>
-          <label class="mmw-chip"><input type="radio" name="drop_type" value="בניין" data-access-control="show" /> בניין</label>
+      <h3>סוג נכס ונגישות</h3>
+      <p class="mmw-note mmw-route-hint">באיסוף וביעד — בית קרקע או בניין; בבניין יש למלא קומה ונגישות.</p>
+
+      <div class="mmw-route-block" data-mmw-access-scope="pickup">
+        <h4 class="mmw-route-block-title">איסוף</h4>
+        <div class="mmw-field" data-section="property-type">
+          <label class="mmw-label">סוג נכס (איסוף)</label>
+          <div class="mmw-checks" data-group="pickup_type">
+            <label class="mmw-chip"><input type="radio" name="pickup_type" value="בית קרקע" data-access-control="hide" required /> בית קרקע</label>
+            <label class="mmw-chip"><input type="radio" name="pickup_type" value="בניין" data-access-control="show" /> בניין</label>
+          </div>
+        </div>
+        <div class="mmw-field" data-section="floor" data-type="building" style="display:none;">
+          <label class="mmw-label">קומה (איסוף)</label>
+          <select class="mmw-select" name="pickup_floor"></select>
+        </div>
+        <div class="mmw-field" data-section="access" data-type="building" style="display:none;">
+          <label class="mmw-label">נגישות (איסוף)</label>
+          <div class="mmw-checks" data-group="pickup_access">
+            <label class="mmw-chip"><input type="radio" name="pickup_access" value="מעלית (פריט נכנס)" /> מעלית (פריט נכנס)</label>
+            <label class="mmw-chip"><input type="radio" name="pickup_access" value="מעלית קטנה (פריט לא נכנס)" /> מעלית קטנה (פריט לא נכנס)</label>
+            <label class="mmw-chip"><input type="radio" name="pickup_access" value="מדרגות בלבד" /> מדרגות בלבד</label>
+            <label class="mmw-chip"><input type="radio" name="pickup_access" value="מספר מדרגות בכניסה" /> מספר מדרגות בכניסה</label>
+            <label class="mmw-chip"><input type="radio" name="pickup_access" value="שביל ארוך / כניסה לא ישירה" /> שביל ארוך / כניסה לא ישירה</label>
+            <label class="mmw-chip" data-free-text="pickup_access_other"><input type="radio" name="pickup_access" value="אחר" /> אחר</label>
+          </div>
+          <input class="mmw-input" type="text" name="pickup_access_other" placeholder="תיאור קצר" style="display:none; margin-top:5px" />
         </div>
       </div>
 
-      <div class="mmw-field" data-section="floor" data-type="building" style="display:none;">
-        <label class="mmw-label">קומה (יעד)</label>
-        <select class="mmw-select" name="drop_floor"></select>
-      </div>
-
-      <div class="mmw-field" data-section="access" data-type="building" style="display:none;">
-        <label class="mmw-label">נגישות (יעד)</label>
-        <div class="mmw-checks" data-group="drop_access">
-          <label class="mmw-chip"><input type="radio" name="drop_access" value="מעלית (פריט נכנס)" /> מעלית (פריט נכנס)</label>
-          <label class="mmw-chip"><input type="radio" name="drop_access" value="מעלית קטנה (פריט לא נכנס)" /> מעלית קטנה (פריט לא נכנס)</label>
-          <label class="mmw-chip"><input type="radio" name="drop_access" value="מדרגות בלבד" /> מדרגות בלבד</label>
-          <label class="mmw-chip"><input type="radio" name="drop_access" value="מספר מדרגות בכניסה" /> מספר מדרגות בכניסה</label>
-          <label class="mmw-chip"><input type="radio" name="drop_access" value="שביל ארוך / כניסה לא ישירה" /> שביל ארוך / כניסה לא ישירה</label>
-          <label class="mmw-chip" data-free-text="drop_access_other"><input type="radio" name="drop_access" value="אחר" /> אחר</label>
+      <div class="mmw-route-block" data-mmw-access-scope="drop">
+        <h4 class="mmw-route-block-title">יעד</h4>
+        <div class="mmw-field" data-section="property-type">
+          <label class="mmw-label">סוג נכס (יעד)</label>
+          <div class="mmw-checks" data-group="drop_type">
+            <label class="mmw-chip"><input type="radio" name="drop_type" value="בית קרקע" data-access-control="hide" required /> בית קרקע</label>
+            <label class="mmw-chip"><input type="radio" name="drop_type" value="בניין" data-access-control="show" /> בניין</label>
+          </div>
         </div>
-        <input class="mmw-input" type="text" name="drop_access_other" placeholder="תיאור קצר" style="display:none; margin-top:5px" />
+        <div class="mmw-field" data-section="floor" data-type="building" style="display:none;">
+          <label class="mmw-label">קומה (יעד)</label>
+          <select class="mmw-select" name="drop_floor"></select>
+        </div>
+        <div class="mmw-field" data-section="access" data-type="building" style="display:none;">
+          <label class="mmw-label">נגישות (יעד)</label>
+          <div class="mmw-checks" data-group="drop_access">
+            <label class="mmw-chip"><input type="radio" name="drop_access" value="מעלית (פריט נכנס)" /> מעלית (פריט נכנס)</label>
+            <label class="mmw-chip"><input type="radio" name="drop_access" value="מעלית קטנה (פריט לא נכנס)" /> מעלית קטנה (פריט לא נכנס)</label>
+            <label class="mmw-chip"><input type="radio" name="drop_access" value="מדרגות בלבד" /> מדרגות בלבד</label>
+            <label class="mmw-chip"><input type="radio" name="drop_access" value="מספר מדרגות בכניסה" /> מספר מדרגות בכניסה</label>
+            <label class="mmw-chip"><input type="radio" name="drop_access" value="שביל ארוך / כניסה לא ישירה" /> שביל ארוך / כניסה לא ישירה</label>
+            <label class="mmw-chip" data-free-text="drop_access_other"><input type="radio" name="drop_access" value="אחר" /> אחר</label>
+          </div>
+          <input class="mmw-input" type="text" name="drop_access_other" placeholder="תיאור קצר" style="display:none; margin-top:5px" />
+        </div>
       </div>
 
       <div class="mmw-actions">
