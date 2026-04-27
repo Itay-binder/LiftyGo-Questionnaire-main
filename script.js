@@ -1,4 +1,4 @@
-  
+     
             (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;
 b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,
 u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));
@@ -34,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
     const form = document.getElementById('mmwForm');
+    const book = document.getElementById('book');
+    const skipMoveTypeStep = book?.classList.contains('mmw-order--apartment-only');
+    const firstNavigableStep = skipMoveTypeStep ? 2 : 1;
     const steps = document.querySelectorAll('.mmw-step');
     const progressBar = document.getElementById('mmwBar');
     const loader = document.getElementById('mmwLoader');
@@ -44,8 +47,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartonsSelectElement = document.querySelector('select[name="cartons"]');
     const apartmentRoomsWrap = document.querySelector('[data-rooms-wrap]');
     const apartmentRoomsInput = document.querySelector('input[name="apartment_rooms"]');
+    const SIGNED_UPLOAD_URL_ENDPOINT = 'https://gcs-signed-url-service-163624355434.me-west1.run.app/create-upload-url';
+    const MAX_MEDIA_FILES = 5;
+    const MAX_MEDIA_FILE_SIZE_MB = 10;
+    const MAX_MEDIA_FILE_SIZE_BYTES = MAX_MEDIA_FILE_SIZE_MB * 1024 * 1024;
 
-    let currentStep = 1;
+    const apartmentMediaInput = document.getElementById('mmwApartmentMediaInput');
+    const apartmentMediaBtn = document.getElementById('mmwApartmentMediaBtn');
+    const apartmentMediaList = document.getElementById('mmwApartmentMediaList');
+    const apartmentMediaClear = document.getElementById('mmwApartmentMediaClear');
+    /** קבצי מדיה לשלב הובלת דירה (עד 5, כמו survey.html) */
+    let apartmentMediaFiles = [];
+
+    let currentStep = firstNavigableStep;
     const totalSteps = steps.length;
     let moveType = null; 
     let pickupPlace = null;
@@ -290,7 +304,7 @@ const generateOrderId = () => {
             
             if (radio && radio.checked) return; 
 
-            if (radio && currentStep === 1) {
+            if (radio && currentStep === 1 && !skipMoveTypeStep) {
                 radio.checked = true;
                 updateChipState(radio);
                 
@@ -319,21 +333,21 @@ const generateOrderId = () => {
              return; 
         }
 
-        if (nextStep < 1 || nextStep > totalSteps) return;
+        if (nextStep < firstNavigableStep || nextStep > totalSteps) return;
 
         steps[currentStep - 1].classList.remove('active');
         currentStep = nextStep;
         steps[currentStep - 1].classList.add('active');
-        // אם חזרנו לשלב 1 – מנקה בחירה
-if(currentStep === 1){
-    document.querySelectorAll('input[name="move_type"]').forEach(r => {
-        r.checked = false;
-    });
-    document.querySelectorAll('[data-group="move_type"] .mmw-chip')
-        .forEach(c => c.classList.remove('active'));
+        // אם חזרנו לשלב 1 – מנקה בחירה (לא במצב דירה בלבד)
+        if (currentStep === 1 && !skipMoveTypeStep) {
+            document.querySelectorAll('input[name="move_type"]').forEach(r => {
+                r.checked = false;
+            });
+            document.querySelectorAll('[data-group="move_type"] .mmw-chip')
+                .forEach(c => c.classList.remove('active'));
 
-    moveType = null;
-}
+            moveType = null;
+        }
 
         // הפעלת הלוגיקה הדינמית לאחר המעבר לשלב 2 או 3 (איסוף או יעד)
         if (currentStep === 2 || currentStep === 3) {
@@ -359,7 +373,13 @@ if(currentStep === 1){
 
     /** עדכון סרגל ההתקדמות */
     const updateProgress = () => {
-        const percent = (currentStep - 1) / (totalSteps - 1) * 100;
+        let percent;
+        if (skipMoveTypeStep) {
+            const span = totalSteps - firstNavigableStep;
+            percent = span > 0 ? ((currentStep - firstNavigableStep) / span) * 100 : 0;
+        } else {
+            percent = (currentStep - 1) / (totalSteps - 1) * 100;
+        }
         progressBar.style.width = `${percent}%`;
     };
 
@@ -383,7 +403,9 @@ if(currentStep === 1){
             if (cartonsSelect) cartonsSelect.value = '';
             resetApartmentRooms();
             if (apartmentRoomsWrap) apartmentRoomsWrap.classList.remove('is-open');
-            if (firstItemInput) firstItemInput.setAttribute('required', true); 
+            if (firstItemInput) firstItemInput.setAttribute('required', true);
+            apartmentMediaFiles = [];
+            renderApartmentMediaList();
         } else {
             cartonsSelect.setAttribute('required', true);
             step.querySelectorAll('.small-move input[name^="item_name_"]').forEach(input => input.removeAttribute('required'));
@@ -406,7 +428,8 @@ if(currentStep === 1){
     
     /** ולידציה של השלב הנוכחי */
     const validateStep = (step, skipPlaceCheck = false) => {
-        
+        if (skipMoveTypeStep && step === 1) return true;
+
         const currentStepElement = steps[step - 1];
         let isValid = true;
         
@@ -723,6 +746,17 @@ if(currentStep === 1){
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files && e.target.files[0]) {
                     const file = e.target.files[0];
+                    const isMedia = file.type.startsWith('image/') || file.type.startsWith('video/');
+                    if (!isMedia) {
+                        alert('אפשר להעלות רק תמונה או סרטון.');
+                        e.target.value = '';
+                        return;
+                    }
+                    if (file.size > MAX_MEDIA_FILE_SIZE_BYTES) {
+                        alert(`הקובץ גדול מדי. אפשר עד ${MAX_MEDIA_FILE_SIZE_MB}MB לקובץ.`);
+                        e.target.value = '';
+                        return;
+                    }
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         const isVideo = file.type.startsWith('video/');
@@ -1062,6 +1096,146 @@ if(currentStep === 1){
 
     // === 3. Data Collection and Submission ===
 
+    const renderApartmentMediaList = () => {
+        if (!apartmentMediaList) return;
+        apartmentMediaList.innerHTML = '';
+        apartmentMediaFiles.forEach((file, idx) => {
+            const li = document.createElement('li');
+            li.className = 'mmw-apartment-media-item';
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'mmw-apartment-media-name';
+            nameSpan.textContent = file.name;
+            const metaSpan = document.createElement('span');
+            metaSpan.className = 'mmw-apartment-media-meta';
+            metaSpan.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            const rm = document.createElement('button');
+            rm.type = 'button';
+            rm.className = 'mmw-apartment-media-remove';
+            rm.setAttribute('aria-label', 'הסר קובץ');
+            rm.textContent = '×';
+            rm.addEventListener('click', () => {
+                apartmentMediaFiles.splice(idx, 1);
+                renderApartmentMediaList();
+            });
+            li.append(nameSpan, metaSpan, rm);
+            apartmentMediaList.appendChild(li);
+        });
+        apartmentMediaList.hidden = apartmentMediaFiles.length === 0;
+        if (apartmentMediaClear) {
+            apartmentMediaClear.style.display = apartmentMediaFiles.length ? 'block' : 'none';
+        }
+    };
+
+    if (apartmentMediaBtn && apartmentMediaInput) {
+        apartmentMediaBtn.addEventListener('click', () => apartmentMediaInput.click());
+    }
+    if (apartmentMediaInput) {
+        apartmentMediaInput.addEventListener('change', (e) => {
+            const picked = Array.from(e.target.files || []);
+            e.target.value = '';
+            if (picked.length === 0) return;
+
+            const invalid = picked.find((f) => !f.type.startsWith('image/') && !f.type.startsWith('video/'));
+            if (invalid) {
+                alert(`הקובץ "${invalid.name}" אינו תמונה/סרטון תקין.`);
+                return;
+            }
+            const oversized = picked.find((f) => f.size > MAX_MEDIA_FILE_SIZE_BYTES);
+            if (oversized) {
+                alert(`הקובץ "${oversized.name}" גדול מדי. אפשר עד ${MAX_MEDIA_FILE_SIZE_MB}MB לכל קובץ.`);
+                return;
+            }
+
+            const merged = apartmentMediaFiles.concat(picked);
+            if (merged.length > MAX_MEDIA_FILES) {
+                alert(`אפשר עד ${MAX_MEDIA_FILES} קבצים בסך הכול (כולל מדיה לפריטים בהובלה קטנה בשליחה).`);
+                apartmentMediaFiles = merged.slice(0, MAX_MEDIA_FILES);
+            } else {
+                apartmentMediaFiles = merged;
+            }
+            renderApartmentMediaList();
+        });
+    }
+    if (apartmentMediaClear) {
+        apartmentMediaClear.addEventListener('click', () => {
+            apartmentMediaFiles = [];
+            renderApartmentMediaList();
+        });
+    }
+
+    const collectApartmentMediaFiles = () =>
+        apartmentMediaFiles.map((file) => ({
+            file,
+            index: -1,
+            itemName: null
+        }));
+
+    const collectMediaFilesFromRows = () => {
+        const mediaFiles = [];
+        document.querySelectorAll('.mmw-items .row').forEach((row, index) => {
+            const fileInput = row.querySelector('.mmw-img-input');
+            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+            if (!file) return;
+            mediaFiles.push({
+                file,
+                index,
+                itemName: row.querySelector(`[name="item_name_${index}"]`)?.value || ''
+            });
+        });
+        return mediaFiles;
+    };
+
+    const uploadMediaFilesToGcs = async (mediaFiles) => {
+        const uploadedItems = [];
+
+        for (let i = 0; i < mediaFiles.length; i += 1) {
+            const media = mediaFiles[i];
+            const file = media.file;
+
+            const signedUrlRes = await fetch(SIGNED_UPLOAD_URL_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: file.name,
+                    contentType: file.type || 'application/octet-stream',
+                    size: file.size
+                })
+            });
+
+            if (!signedUrlRes.ok) {
+                throw new Error('signed_url_request_failed');
+            }
+
+            const signedPayload = await signedUrlRes.json();
+            const signedUrl = signedPayload?.signedUrl;
+            if (!signedUrl) {
+                throw new Error('signed_url_missing');
+            }
+
+            const uploadRes = await fetch(signedUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': file.type || 'application/octet-stream' },
+                body: file
+            });
+            if (!uploadRes.ok) {
+                throw new Error('gcs_upload_failed');
+            }
+
+            uploadedItems.push({
+                media_type: file.type.startsWith('image/') ? 'image' : 'video',
+                media_url: signedPayload?.publicUrl || null,
+                gcs_bucket: signedPayload?.bucket || null,
+                gcs_object_key: signedPayload?.objectKey || null,
+                file_name: file.name,
+                file_size: file.size,
+                file_type: file.type,
+                item_name: media.itemName || null
+            });
+        }
+
+        return uploadedItems;
+    };
+
     /** איסוף הנתונים ל-Payload */
     const collectPayload = () => {
         const formData = new FormData(form);
@@ -1239,7 +1413,7 @@ if(currentStep === 1){
                     const item = {
                         name: itemName,
                         quantity: itemQty,
-                        image_base64: fileData.base64 || null, // null במקום מחרוזת
+                        has_media: !!(fileData.base64 && fileData.type),
                         image_type: fileData.type || null
                     };
                     
@@ -1316,21 +1490,10 @@ if(currentStep === 1){
         });
         
         try {
-            // Make: לא לשלוח apartment_rooms בלי מספר תקף — מניעת נפילה בסכימה/מודול מספרי
-            const makePayload = { ...payload };
-            const roomsRaw = makePayload.apartment_rooms;
-            const roomsStr = roomsRaw == null ? '' : String(roomsRaw).trim();
-            const roomsNum = roomsStr === '' ? NaN : Number(roomsStr);
-            if (!Number.isFinite(roomsNum) || roomsNum <= 0) {
-                delete makePayload.apartment_rooms;
-            } else {
-                makePayload.apartment_rooms = roomsStr;
-            }
-
             const response = await fetch('https://hook.us1.make.com/wgko3er3c8r5mz8vv9llqwjza49jedfm', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(makePayload)
+                body: JSON.stringify(payload)
             });
             
             if (response.ok) {
@@ -1402,191 +1565,70 @@ if(currentStep === 1){
           console.log('[LIFTYGO] submit prepared', { eventId, fbp, fbc });
         
         loaderTitle.textContent = 'התחלנו להזיז לך את ההובלה!';
-        loaderSubtitle.textContent = 'מעלים תמונות וסרטונים לגוגל דרייב...';
+        loaderSubtitle.textContent = 'מעלה תמונות וסרטונים לאחסון מאובטח...';
         loader.classList.remove('quick-load'); 
         loader.classList.add('show');
         document.getElementById('mmwSubmit').classList.add('mmw-disabled');
 
         const payload = collectPayload();
         
-        // העלאת תמונות/סרטונים לגוגל דרייב לפני שליחת הטופס
-        const isSmallMove = (payload.move_type === 'הובלה קטנה');
-        let driveFolderInfo = null;
-        
-        if (isSmallMove && payload.items_list && Array.isArray(payload.items_list)) {
-            console.log('[Form Submit] Items list:', payload.items_list);
-            
-            // איסוף כל הקבצים להעלאה
-            const filesToUpload = [];
-            
-            payload.items_list.forEach((item, index) => {
-                console.log('[Form Submit] Processing item:', {
-                    index,
-                    name: item.name,
-                    hasBase64: !!item.image_base64,
-                    base64Value: item.image_base64 ? item.image_base64.substring(0, 50) + '...' : 'empty',
-                    imageType: item.image_type,
-                    isValid: item.image_base64 && item.image_base64 !== 'אין תמונה/סרטון' && item.image_type
-                });
-                
-                // בדיקה מפורשת יותר - רק אם יש base64 אמיתי ו-type
-                if (item.image_base64 && 
-                    item.image_base64 !== 'אין תמונה/סרטון' && 
-                    item.image_base64 !== null &&
-                    item.image_base64 !== '' &&
-                    item.image_type && 
-                    item.image_type !== null) {
-                    
-                    const isVideo = item.image_type.startsWith('video/');
-                    const fileExtension = item.image_type.split('/')[1] || (isVideo ? 'mp4' : 'jpg');
-                    const filename = `${item.name.replace(/[^a-z0-9]/gi, '_')}_${index + 1}.${fileExtension}`;
-                    
-                    console.log('[Form Submit] Adding file to upload:', {
-                        filename: filename,
-                        mime_type: item.image_type,
-                        base64_length: item.image_base64.length,
-                        base64_preview: item.image_base64.substring(0, 50) + '...'
-                    });
-                    
-                    filesToUpload.push({
-                        base64: item.image_base64,
-                        filename: filename,
-                        mime_type: item.image_type
-                    });
-                } else {
-                    console.warn('[Form Submit] Skipping item (no valid file):', {
-                        index,
-                        name: item.name,
-                        hasBase64: !!item.image_base64,
-                        base64Value: item.image_base64 ? (typeof item.image_base64 === 'string' ? item.image_base64.substring(0, 30) + '...' : 'not string') : 'null',
-                        imageType: item.image_type
-                    });
-                }
-            });
-            
-            console.log('[Form Submit] Files to upload:', filesToUpload.length);
-            console.log('[Form Submit] Files details:', filesToUpload.map(f => ({
-                filename: f.filename,
-                mime_type: f.mime_type,
-                base64_length: f.base64 ? f.base64.length : 0,
-                base64_preview: f.base64 ? f.base64.substring(0, 50) + '...' : 'empty'
-            })));
-            
-            // דיבוג - בדיקה למה אין קבצים
-            if (filesToUpload.length === 0) {
-                console.warn('[Form Submit] ⚠️⚠️⚠️ NO FILES TO UPLOAD!');
-                console.warn('[Form Submit] Items list length:', payload.items_list ? payload.items_list.length : 0);
-                console.warn('[Form Submit] Items with images:', payload.items_list ? payload.items_list.filter(item => item.image_base64).length : 0);
-                console.warn('[Form Submit] All items:', payload.items_list);
-            }
-            
-            // יוצר תיקייה רק אם יש קבצים להעלאה
-            if (filesToUpload.length > 0) {
-                loaderSubtitle.textContent = `יוצר תיקייה ומעלה ${filesToUpload.length} קבצים...`;
-                
-                // המרת תאריך לפורמט YYYY-MM-DD (input type="date" מחזיר כבר בפורמט הזה)
-                const orderDate = payload.date || new Date().toISOString().split('T')[0];
-                
-                console.log('[Form Submit] ⚠️⚠️⚠️ CALLING createFolderAndUploadToDrive');
-                console.log('[Form Submit] Calling createFolderAndUploadToDrive:', {
-                    customerName: payload.name || 'לקוח',
-                    orderDate: orderDate,
-                    filesCount: filesToUpload.length,
-                    files: filesToUpload.map(f => ({
-                        filename: f.filename,
-                        mime_type: f.mime_type,
-                        hasBase64: !!f.base64,
-                        base64Length: f.base64 ? f.base64.length : 0
-                    }))
-                });
-                
-                try {
-                    console.log('[Form Submit] ⚠️⚠️⚠️ CALLING createFolderAndUploadToDrive - START');
-                    driveFolderInfo = await createFolderAndUploadToDrive(
-                        payload.name || 'לקוח',
-                        orderDate,
-                        filesToUpload
-                    );
-                    console.log('[Form Submit] ⚠️⚠️⚠️ createFolderAndUploadToDrive RETURNED - SUCCESS');
-                } catch (error) {
-                    console.error('[Form Submit] ❌❌❌ ERROR in createFolderAndUploadToDrive:', error);
-                    console.error('[Form Submit] Error type:', error.constructor.name);
-                    console.error('[Form Submit] Error name:', error.name);
-                    console.error('[Form Submit] Error message:', error.message);
-                    console.error('[Form Submit] Error stack:', error.stack);
-                    driveFolderInfo = null;
-                }
-                
-                console.log('[Form Submit] Drive folder info received:', driveFolderInfo);
-                console.log('[Form Submit] Drive folder info type:', typeof driveFolderInfo);
-                console.log('[Form Submit] Drive folder info keys:', driveFolderInfo ? Object.keys(driveFolderInfo) : 'null');
-                console.log('[Form Submit] Drive folder info full:', JSON.stringify(driveFolderInfo, null, 2));
-                
-                // נוודא שיש folder_id - זה הכי חשוב!
-                if (driveFolderInfo && driveFolderInfo.folder_id) {
-                    // אם יש folder_id, נבנה את folder_url אם חסר
-                    if (!driveFolderInfo.folder_url) {
-                        driveFolderInfo.folder_url = 'https://drive.google.com/drive/folders/' + driveFolderInfo.folder_id;
-                        console.log('[Form Submit] ✅ Constructed folder_url from folder_id:', driveFolderInfo.folder_url);
-                    }
-                    
-                    loaderSubtitle.textContent = 'תיקייה נוצרה בהצלחה! שולחים את פרטי ההזמנה...';
-                    console.log('[Form Submit] ✅ Drive folder created successfully:', {
-                        folder_url: driveFolderInfo.folder_url,
-                        folder_id: driveFolderInfo.folder_id,
-                        folder_name: driveFolderInfo.folder_name,
-                        files_count: driveFolderInfo.files_count || 0
-                    });
-                    if (driveFolderInfo.upload_success === false && driveFolderInfo.upload_error) {
-                        console.warn('[Form Submit] ⚠️ Image upload to Drive failed:', driveFolderInfo.upload_error.message || driveFolderInfo.upload_error);
-                        console.warn('[Form Submit] upload_error details:', driveFolderInfo.upload_error);
-                    }
-                } else {
-                    loaderSubtitle.textContent = 'שולחים את פרטי ההזמנה...';
-                    console.error('[Form Submit] ❌ Failed to create drive folder or missing folder_id!');
-                    console.error('[Form Submit] driveFolderInfo:', driveFolderInfo);
-                    console.error('[Form Submit] driveFolderInfo type:', typeof driveFolderInfo);
-                    if (driveFolderInfo) {
-                        console.error('[Form Submit] driveFolderInfo keys:', Object.keys(driveFolderInfo));
-                        console.error('[Form Submit] driveFolderInfo.folder_id:', driveFolderInfo.folder_id);
-                    }
-                }
-            } else {
-                console.log('[Form Submit] No files to upload, skipping folder creation');
-                loaderSubtitle.textContent = 'שולחים את פרטי ההזמנה...';
-            }
+        // העלאת קבצי מדיה ל-GCS דרך Signed URL, כמו ב-survey.html (דירה + פריטים בהובלה קטנה)
+        const mediaFiles = collectApartmentMediaFiles().concat(collectMediaFilesFromRows());
+        if (mediaFiles.length > MAX_MEDIA_FILES) {
+            alert(`אפשר להעלות עד ${MAX_MEDIA_FILES} קבצים בכל שליחה.`);
+            loader.classList.remove('show');
+            document.getElementById('mmwSubmit').classList.remove('mmw-disabled');
+            return;
         }
-        
-        // עדכון מידע התיקייה ב-payload (השדות כבר קיימים עם ערכים ריקים מ-collectPayload)
-        // זה הקוד הקריטי - כאן הקישור צריך להתעדכן!
-        console.log('[Form Submit] Before updating payload - driveFolderInfo:', driveFolderInfo);
-        console.log('[Form Submit] Before updating payload - has folder_id:', driveFolderInfo && driveFolderInfo.folder_id);
-        
-        if (driveFolderInfo && driveFolderInfo.folder_id) {
-            // אם יש folder_id, נבנה את folder_url אם חסר
-            const folderUrl = driveFolderInfo.folder_url || 
-                             'https://drive.google.com/drive/folders/' + driveFolderInfo.folder_id;
-            
-            payload.drive_folder_url = folderUrl;
-            payload.drive_folder_id = driveFolderInfo.folder_id;
-            payload.drive_folder_name = driveFolderInfo.folder_name || '';
-            payload.drive_files_count = driveFolderInfo.files_count || 0;
-            
-            console.log('[Form Submit] ✅✅✅ UPDATED drive folder info in payload:', {
-                drive_folder_url: payload.drive_folder_url,
-                drive_folder_id: payload.drive_folder_id,
-                drive_folder_name: payload.drive_folder_name,
-                drive_files_count: payload.drive_files_count
-            });
+
+        const oversizedFile = mediaFiles.find(media => media.file.size > MAX_MEDIA_FILE_SIZE_BYTES);
+        if (oversizedFile) {
+            alert(`הקובץ "${oversizedFile.file.name}" גדול מדי. אפשר עד ${MAX_MEDIA_FILE_SIZE_MB}MB לכל קובץ.`);
+            loader.classList.remove('show');
+            document.getElementById('mmwSubmit').classList.remove('mmw-disabled');
+            return;
+        }
+
+        if (mediaFiles.length > 0) {
+            if (!SIGNED_UPLOAD_URL_ENDPOINT) {
+                alert('חסר חיבור לשרת העלאה מאובטח. יש להגדיר SIGNED_UPLOAD_URL_ENDPOINT.');
+                loader.classList.remove('show');
+                document.getElementById('mmwSubmit').classList.remove('mmw-disabled');
+                return;
+            }
+
+            loaderSubtitle.textContent = `מעלה ${mediaFiles.length} קבצי מדיה...`;
+
+            try {
+                const mediaItems = await uploadMediaFilesToGcs(mediaFiles);
+                payload.media_count = mediaItems.length;
+                payload.media_items = mediaItems;
+
+                // תאימות לאחור לשדות יחידים במידת הצורך
+                payload.media_type = mediaItems[0]?.media_type || null;
+                payload.media_url = mediaItems[0]?.media_url || null;
+                payload.gcs_bucket = mediaItems[0]?.gcs_bucket || null;
+                payload.gcs_object_key = mediaItems[0]?.gcs_object_key || null;
+                payload.video_file_name = mediaItems[0]?.file_name || null;
+                payload.video_file_size = mediaItems[0]?.file_size || null;
+                payload.video_file_type = mediaItems[0]?.file_type || null;
+            } catch (uploadError) {
+                console.error('[Form Submit] Failed to upload media to GCS:', uploadError);
+                alert(`העלאת המדיה נכשלה.\n\nנסה:\n• עד ${MAX_MEDIA_FILES} קבצים\n• עד ${MAX_MEDIA_FILE_SIZE_MB}MB לכל קובץ\n• חיבור אינטרנט יציב`);
+                loader.classList.remove('show');
+                document.getElementById('mmwSubmit').classList.remove('mmw-disabled');
+                return;
+            }
         } else {
-            // השדות כבר קיימים עם ערכים ריקים מ-collectPayload
-            console.warn('[Form Submit] ⚠️⚠️⚠️ No drive folder info to update - keeping empty values:', {
-                drive_folder_url: payload.drive_folder_url,
-                drive_folder_id: payload.drive_folder_id,
-                drive_folder_name: payload.drive_folder_name,
-                drive_files_count: payload.drive_files_count,
-                driveFolderInfo: driveFolderInfo
-            });
+            payload.media_count = 0;
+            payload.media_items = [];
+            payload.media_type = null;
+            payload.media_url = null;
+            payload.gcs_bucket = null;
+            payload.gcs_object_key = null;
+            payload.video_file_name = null;
+            payload.video_file_size = null;
+            payload.video_file_type = null;
         }
         
         console.log('[Form Submit] Final payload:', payload);
@@ -1604,11 +1646,39 @@ if(currentStep === 1){
     // ודא שהלוגיקה הדינמית פועלת גם בטעינת הדף (כאשר אין בחירה ראשונית)
     const step2 = document.querySelector('[data-step="2"]');
     const step3 = document.querySelector('[data-step="3"]');
+    if (skipMoveTypeStep) {
+        const aptRadio = document.querySelector('input[name="move_type"][value="הובלת דירה"]');
+        if (aptRadio) {
+            aptRadio.checked = true;
+            updateChipState(aptRadio);
+            moveType = 'הובלת דירה';
+            toggleContentStep(moveType);
+        }
+        currentStep = Math.max(currentStep, firstNavigableStep);
+        steps.forEach((el) => {
+            const n = parseInt(el.getAttribute('data-step'), 10);
+            el.classList.toggle('active', n === currentStep);
+        });
+    }
     if (step2) toggleAccessFields(step2);
     if (step3) toggleAccessFields(step3);
     syncApartmentRoomsField();
 // 🔁 תיקון חזרה אחורה בדפדפן (BFCache)
 window.addEventListener('pageshow', () => {
+  if (skipMoveTypeStep) {
+    const aptRadio = document.querySelector('input[name="move_type"][value="הובלת דירה"]');
+    if (aptRadio) {
+      aptRadio.checked = true;
+      moveType = 'הובלת דירה';
+      updateChipState(aptRadio);
+      toggleContentStep(moveType);
+    }
+    if (currentStep < firstNavigableStep) currentStep = firstNavigableStep;
+    document.querySelectorAll('.mmw-step').forEach((el) => {
+      const n = parseInt(el.getAttribute('data-step'), 10);
+      el.classList.toggle('active', n === currentStep);
+    });
+  }
   // סנכרון move_type
   const selectedMove = document.querySelector('input[name="move_type"]:checked');
   if (selectedMove) {

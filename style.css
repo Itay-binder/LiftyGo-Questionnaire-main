@@ -61,6 +61,15 @@ body{
 .mmw-step.active{
   display:block;
 }
+
+/* מצב הזמנה: רק הובלת דירה — מסך בחירת סוג מוסתר, מתחילים מאיסוף */
+.mmw-order--apartment-only .mmw-step[data-step="1"]{
+  display:none !important;
+}
+.mmw-order--apartment-only [data-step="2"] .mmw-actions [data-prev]{
+  display:none;
+}
+
 .mmw-note{
   color:var(--muted); 
   font-size:12px; 
@@ -73,6 +82,20 @@ body{
   display:grid; 
   gap:6px; 
   margin:10px 0;
+}
+.mmw-rooms-wrap{
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-6px);
+  transition: max-height .25s ease, opacity .2s ease, transform .25s ease, margin .25s ease;
+  margin: 0;
+}
+.mmw-rooms-wrap.is-open{
+  max-height: 180px;
+  opacity: 1;
+  transform: translateY(0);
+  margin: 8px 0 2px;
 }
 .mmw-label{
   font-size:1.2VW; 
@@ -269,7 +292,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   display:flex; 
   gap:8px; 
   margin-top:8px; 
-  align-items:flex-start; 
+  align-items:center; 
   border:1px solid var(--line); 
   padding:10px; 
   border-radius:12px;
@@ -296,50 +319,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .mmw-items .row .img-wrap{
   order:3; 
   position:relative;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 6px;
-  max-width: 220px;
-}
-.mmw-items .row .previews {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-.mmw-items .row .preview-thumb-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-.mmw-items .row .preview-thumb {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  object-fit: cover;
-  border: 1px solid var(--line);
-  display: block;
-}
-.mmw-items .row .thumb-remove {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: var(--danger);
-  color: #fff;
-  font-size: 12px;
-  line-height: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.mmw-items .row .thumb-remove:hover {
-  filter: brightness(1.1);
 }
 .mmw-items .row .img-btn{
   display:inline-flex; 
@@ -365,6 +344,14 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .mmw-items .row .img-btn:hover {
   background: #e9d5ff;
 }
+.mmw-items .row img.preview{
+  width:38px; 
+  height:38px; 
+  border-radius:10px; 
+  object-fit:cover; 
+  border:1px solid var(--line); 
+  display:none;
+}
 .mmw-items .row .del {
   padding: 6px 8px;
   border: 0; 
@@ -377,6 +364,59 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 .mmw-items .row .del:hover {
   background: #fef2f2; 
+}
+
+/* מדיה בשלב הובלת דירה (כמו survey) */
+.mmw-apartment-media-hint{
+  margin-bottom:10px;
+  text-align:right;
+}
+.mmw-apartment-media-list{
+  list-style:none;
+  margin:10px 0 0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.mmw-apartment-media-list[hidden]{
+  display:none !important;
+}
+.mmw-apartment-media-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  padding:8px 10px;
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:10px;
+  font-size:14px;
+}
+.mmw-apartment-media-name{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--text);
+}
+.mmw-apartment-media-meta{
+  color:var(--muted);
+  font-size:13px;
+}
+.mmw-apartment-media-remove{
+  border:0;
+  background:transparent;
+  color:var(--danger);
+  cursor:pointer;
+  font-size:20px;
+  line-height:1;
+  padding:4px 8px;
+  border-radius:8px;
+}
+.mmw-apartment-media-remove:hover{
+  background:#fef2f2;
 }
 
 /* === 7. LOADER (מסך טעינה) === */

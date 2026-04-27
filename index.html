@@ -79,12 +79,7 @@
   }
 </style>
 
-<aside class="mmw-card" id="book" dir="rtl" style="position:relative">
-  <script>
-    /* לא דורס ערך שכבר הוגדר (למשל בווידג'ט נפרד או ב־HEAD לפני ההטמעה) */
-    window.LIFTYGO_DRIVE_UPLOAD_URL ??= '';
-    window.LIFTYGO_DRIVE_UPLOAD_API_KEY ??= '';
-  </script>
+<aside class="mmw-card mmw-order--apartment-only" id="book" dir="rtl" style="position:relative">
   
   <div id="mmwLoader">
     <div class="truck"></div>
@@ -107,19 +102,19 @@
 <input type="hidden" name="utm_content">
 
 
-    <div class="mmw-step active" data-step="1">
+    <div class="mmw-step" data-step="1">
       <h3>בחר סוג הובלה</h3>
       <div class="mmw-field">
        
         <div class="mmw-checks" data-group="move_type">
           <label class="mmw-chip mmw-chip-xl" data-type="single" data-auto-next>
-              <input type="radio" name="move_type" value="הובלה קטנה" required/> <span class="chip-content">
+              <input type="radio" name="move_type" value="הובלה קטנה" /> <span class="chip-content">
     <img src="https://binder.co.il/wp-content/uploads/2026/01/ככה-תעשה-את-עסקת-הנדלן-הבאה-שלך-תוך-90-ימים-מהיום-4.png" class="chip-icon">
     הובלה קטנה
   </span>️
           </label>
           <label class="mmw-chip mmw-chip-xl" data-type="apartment" data-auto-next>
-              <input type="radio" name="move_type" value="הובלת דירה" required/> <span class="chip-content">
+              <input type="radio" name="move_type" value="הובלת דירה" checked /> <span class="chip-content">
     <img src="https://binder.co.il/wp-content/uploads/2026/01/ככה-תעשה-את-עסקת-הנדלן-הבאה-שלך-תוך-90-ימים-מהיום-5.png" class="chip-icon">
     הובלת דירה
   </span>
@@ -129,7 +124,7 @@
       <div class="mmw-note">הובלת דירה כוללת סלון, חדרי שינה, מטבח וארגזים. הובלה קטנה היא פריטים בודדים בלבד.</div>
     </div>
     
-    <div class="mmw-step" data-step="2">
+    <div class="mmw-step active" data-step="2">
       <h3>איסוף</h3>
       <div class="mmw-field">
         <label class="mmw-label">כתובת איסוף</label>
@@ -222,6 +217,22 @@
             <option value="" selected disabled>בחר מספר</option>
           </select>
         </div>
+        <div class="mmw-rooms-wrap" data-rooms-wrap>
+          <div class="mmw-field">
+            <label class="mmw-label">אני מעביר דירת (כמות חדרים)</label>
+            <input
+              type="number"
+              class="mmw-input"
+              name="apartment_rooms"
+              min="1"
+              max="12"
+              step="0.5"
+              inputmode="decimal"
+              placeholder="למשל: 3"
+            />
+            <div class="mmw-note">הערכה אוטומטית לפי הקרטונים - אפשר לשנות.</div>
+          </div>
+        </div>
         <div class="mmw-field">
          <label class="mmw-label">מה מובילים?</label>
          <textarea
@@ -230,6 +241,17 @@
     placeholder="פרט לנו מה מובילים (רהיטים גדולים, מכשירי חשמל, פריטים מיוחדים וכו')"
     rows="3"
   ></textarea>
+        </div>
+
+        <div class="mmw-field mmw-apartment-media">
+          <label class="mmw-label">תמונות או סרטונים (לא חובה)</label>
+          <p class="mmw-note mmw-apartment-media-hint">בחר מהמכשיר או צלם. עד 5 קבצים, עד 10MB לכל קובץ.</p>
+          <input type="file" id="mmwApartmentMediaInput" accept="image/*,video/*" multiple style="display:none" />
+          <button type="button" class="mmw-btn mmw-ghost" id="mmwApartmentMediaBtn" aria-label="בחירת מדיה או צילום">
+            בחר מדיה / צלם
+          </button>
+          <ul class="mmw-apartment-media-list" id="mmwApartmentMediaList" hidden></ul>
+          <button type="button" class="mmw-btn mmw-ghost mmw-apartment-media-clear" id="mmwApartmentMediaClear" style="display:none;margin-top:8px">נקה את כל הקבצים</button>
         </div>
 
       </div>
