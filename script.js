@@ -56,8 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const apartmentMediaBtn = document.getElementById('mmwApartmentMediaBtn');
     const apartmentMediaList = document.getElementById('mmwApartmentMediaList');
     const apartmentMediaClear = document.getElementById('mmwApartmentMediaClear');
+    const mediaPromptModal = document.getElementById('mmwMediaPromptModal');
+    const mediaPromptAddBtn = document.getElementById('mmwMediaPromptAdd');
+    const mediaPromptSkipBtn = document.getElementById('mmwMediaPromptSkip');
+    const mediaPromptCloseBtn = document.getElementById('mmwMediaPromptClose');
     /** קבצי מדיה לשלב הובלת דירה (עד 5, כמו survey.html) */
     let apartmentMediaFiles = [];
+    let allowSubmitWithoutMedia = false;
 
     let currentStep = firstNavigableStep;
     const totalSteps = steps.length;
@@ -372,6 +377,20 @@ const generateOrderId = () => {
         }
         
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const openMediaPrompt = () => {
+        if (!mediaPromptModal) return;
+        mediaPromptModal.classList.add('open');
+        mediaPromptModal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeMediaPrompt = () => {
+        if (!mediaPromptModal) return;
+        mediaPromptModal.classList.remove('open');
+        mediaPromptModal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
     };
 
     /** עדכון סרגל ההתקדמות */
@@ -1157,12 +1176,39 @@ const generateOrderId = () => {
                 apartmentMediaFiles = merged;
             }
             renderApartmentMediaList();
+            if (apartmentMediaFiles.length > 0) allowSubmitWithoutMedia = false;
         });
     }
     if (apartmentMediaClear) {
         apartmentMediaClear.addEventListener('click', () => {
             apartmentMediaFiles = [];
             renderApartmentMediaList();
+        });
+    }
+
+    if (mediaPromptCloseBtn) {
+        mediaPromptCloseBtn.addEventListener('click', closeMediaPrompt);
+    }
+    if (mediaPromptModal) {
+        mediaPromptModal.addEventListener('click', (e) => {
+            if (e.target === mediaPromptModal) closeMediaPrompt();
+        });
+    }
+    if (mediaPromptAddBtn) {
+        mediaPromptAddBtn.addEventListener('click', () => {
+            allowSubmitWithoutMedia = false;
+            closeMediaPrompt();
+            if (currentStep === 5) {
+                navigate(-1);
+            }
+            document.querySelector('.mmw-apartment-media, #mmwItems')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    }
+    if (mediaPromptSkipBtn) {
+        mediaPromptSkipBtn.addEventListener('click', () => {
+            allowSubmitWithoutMedia = true;
+            closeMediaPrompt();
+            form.requestSubmit();
         });
     }
 
@@ -1540,6 +1586,15 @@ const generateOrderId = () => {
 
           if (!validateStep(currentStep)) return;
 
+        const mediaFiles = collectApartmentMediaFiles().concat(collectMediaFilesFromRows());
+        if (mediaFiles.length === 0 && !allowSubmitWithoutMedia) {
+            openMediaPrompt();
+            return;
+        }
+        if (mediaFiles.length > 0) {
+            allowSubmitWithoutMedia = false;
+        }
+
           // =========================
           // 🔹 PREPARE META DATA
           // =========================
@@ -1570,7 +1625,6 @@ const generateOrderId = () => {
         const payload = collectPayload();
         
         // העלאת קבצי מדיה ל-GCS דרך Signed URL, כמו ב-survey.html (דירה + פריטים בהובלה קטנה)
-        const mediaFiles = collectApartmentMediaFiles().concat(collectMediaFilesFromRows());
         if (mediaFiles.length > MAX_MEDIA_FILES) {
             alert(`אפשר להעלות עד ${MAX_MEDIA_FILES} קבצים בכל שליחה.`);
             loader.classList.remove('show');

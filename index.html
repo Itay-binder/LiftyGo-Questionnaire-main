@@ -334,6 +334,22 @@
   </div>
 </div>
 
+<div class="mmw-modal-overlay" id="mmwMediaPromptModal" aria-hidden="true">
+  <div class="mmw-modal mmw-media-modal" role="dialog" aria-modal="true" aria-label="הוספת מדיה להזמנה">
+    <div class="mmw-modal-head">
+      <span class="mmw-modal-title">רוצים הצעת מחיר מדויקת יותר?</span>
+      <button type="button" class="mmw-modal-close" id="mmwMediaPromptClose" aria-label="סגור">×</button>
+    </div>
+    <div class="mmw-media-modal-body">
+      הוספת תמונות או סרטונים עוזרת למובילים להבין בדיוק מה עוברים, למנוע הפתעות ולצמצם שינויי מחיר ביום ההובלה.
+    </div>
+    <div class="mmw-actions mmw-media-modal-actions">
+      <button type="button" class="mmw-btn mmw-primary" id="mmwMediaPromptAdd">הוספת מדיה</button>
+      <button type="button" class="mmw-btn mmw-ghost" id="mmwMediaPromptSkip">שלח הזמנה בלי מדיה</button>
+    </div>
+  </div>
+</div>
+
 <script>
   (function () {
     var modal = document.getElementById("mmwTermsModal");

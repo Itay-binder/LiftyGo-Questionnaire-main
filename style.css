@@ -467,6 +467,23 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   min-width:0;
   max-width:100%;
 }
+.mmw-media-modal{
+  max-width: 520px;
+  height: auto;
+}
+.mmw-media-modal-body{
+  padding: 16px 14px 8px;
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 15px;
+}
+.mmw-media-modal-actions{
+  padding: 0 14px 14px;
+  margin-top: 4px;
+}
+.mmw-media-modal-actions .mmw-btn{
+  padding: 12px;
+}
 
 /* === 7. LOADER (מסך טעינה) === */
 #mmwLoader {
