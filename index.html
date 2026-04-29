@@ -125,8 +125,7 @@
     </div>
     
     <div class="mmw-step active" data-step="2">
-      <h3>מאיפה לאיפה</h3>
-      <p class="mmw-note mmw-route-hint">בחרו כתובת איסוף וכתובת יעד מתוך ההצעות של גוגל.</p>
+      <h3>מאיפה לאיפה מובילים</h3>
       <div class="mmw-field">
         <label class="mmw-label">כתובת איסוף</label>
         <input class="mmw-input" name="pickup" placeholder="כתובת איסוף" required />
@@ -143,9 +142,7 @@
     </div>
 
     <div class="mmw-step" data-step="3">
-      <h3>סוג נכס ונגישות</h3>
-      <p class="mmw-note mmw-route-hint">באיסוף וביעד — בית קרקע או בניין; בבניין יש למלא קומה ונגישות.</p>
-
+      <h3>סוג הנכס ונגישות</h3>
       <div class="mmw-route-block" data-mmw-access-scope="pickup">
         <h4 class="mmw-route-block-title">איסוף</h4>
         <div class="mmw-field" data-section="property-type">
@@ -250,7 +247,7 @@
         </div>
 
         <div class="mmw-field mmw-apartment-media">
-          <label class="mmw-label">תמונות או סרטונים (לא חובה)</label>
+          <label class="mmw-label">תמונות או סרטונים (מומלץ)</label>
           <p class="mmw-note mmw-apartment-media-hint">בחר מהמכשיר או צלם. עד 5 קבצים, עד 10MB לכל קובץ.</p>
           <input type="file" id="mmwApartmentMediaInput" accept="image/*,video/*" multiple style="display:none" />
           <button type="button" class="mmw-btn mmw-ghost" id="mmwApartmentMediaBtn" aria-label="בחירת מדיה או צילום">
@@ -278,11 +275,6 @@
         />
       </div>
       
-      <div class="mmw-field">
-        <label class="mmw-label">תאריך להובלה</label>
-        <input type="date" name="date" class="mmw-input" required />
-      </div>
-      
       <div class="mmw-actions">
         <button type="button" class="mmw-btn mmw-ghost" data-prev>הקודם</button>
         <button type="button" class="mmw-btn mmw-primary" data-next data-target-step="5">המשך</button>
@@ -291,6 +283,15 @@
 
     <div class="mmw-step" data-step="5">
       <h3>פרטי יצירת קשר</h3>
+      <div class="mmw-field">
+        <label class="mmw-label">למתי צריך את ההובלה?</label>
+        <div class="mmw-checks" data-group="moving_timing">
+          <label class="mmw-chip"><input type="radio" name="moving_timing" value="דחיפות מיידית - עד 48 שעות" required /> דחיפות מיידית - עד 48 שעות</label>
+          <label class="mmw-chip"><input type="radio" name="moving_timing" value="לשבוע הקרוב" /> לשבוע הקרוב</label>
+          <label class="mmw-chip"><input type="radio" name="moving_timing" value="לחודש הקרוב" /> לחודש הקרוב</label>
+          <label class="mmw-chip"><input type="radio" name="moving_timing" value="גמיש" /> גמיש</label>
+        </div>
+      </div>
       <div class="mmw-field"><label class="mmw-label">שם מלא</label><input class="mmw-input" name="name" required /></div>
       <div class="mmw-field"><label class="mmw-label">טלפון</label><input class="mmw-input" name="phone" inputmode="tel" placeholder="05x-xxxxxxx" required /></div>
       <div class="mmw-field"><label class="mmw-label">הערות</label><textarea class="mmw-textarea" name="notes" placeholder="קומה/גישה/פירוק והרכבה"></textarea></div>

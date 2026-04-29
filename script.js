@@ -1,4 +1,4 @@
-     
+         
             (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;
 b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,
 u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));
@@ -1250,24 +1250,18 @@ const generateOrderId = () => {
         payload.move_type = formData.get('move_type');
         payload.pickup = formData.get('pickup');
         payload.dropoff = formData.get('dropoff');
-        payload.date = formData.get('date');
+        payload.moving_timing = formData.get('moving_timing');
+        payload.date = null;
 
-        // בדיקה אם ההובלה דחופה (היום או מחר)
-        const requestedDate = formData.get('date');
-        if (requestedDate) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const requestDate = new Date(requestedDate);
-            requestDate.setHours(0, 0, 0, 0);
-            const diffTime = requestDate - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            // אם התאריך הוא היום (0 ימים) או מחר (1 יום) -> דחוף
-            if (diffDays <= 1) {
-                payload.is_urgent = 'דחוף';
-            } else {
-                payload.is_urgent = 'לא דחוף';
-            }
+        // מיפוי רמת דחיפות לפי בחירה ידנית של המשתמש
+        if (payload.moving_timing === 'דחיפות מיידית - עד 48 שעות') {
+            payload.is_urgent = 'דחוף';
+        } else if (payload.moving_timing === 'לשבוע הקרוב') {
+            payload.is_urgent = 'גבוה';
+        } else if (payload.moving_timing === 'לחודש הקרוב') {
+            payload.is_urgent = 'בינוני';
+        } else if (payload.moving_timing === 'גמיש') {
+            payload.is_urgent = 'גמיש';
         } else {
             payload.is_urgent = 'לא ידוע';
         }
@@ -1513,7 +1507,7 @@ const generateOrderId = () => {
             r.append('fname', payload.name);
             r.append('phone', payload.phone);
             r.append('custom_3', payload.items_text); 
-            r.append('custom_4', payload.date);
+            r.append('custom_4', payload.moving_timing || '');
             r.append('custom_5', payload.pickup + ' > ' + payload.dropoff); 
             r.append('form_id', '2810431');
             r.append('action', 'subscribe');
