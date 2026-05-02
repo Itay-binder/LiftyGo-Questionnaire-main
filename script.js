@@ -1,4 +1,4 @@
-         
+             
             (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;
 b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,
 u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));
@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mediaPromptAddBtn = document.getElementById('mmwMediaPromptAdd');
     const mediaPromptSkipBtn = document.getElementById('mmwMediaPromptSkip');
     const mediaPromptCloseBtn = document.getElementById('mmwMediaPromptClose');
+    const mediaPromptList = document.getElementById('mmwMediaPromptList');
     /** קבצי מדיה לשלב הובלת דירה (עד 5, כמו survey.html) */
     let apartmentMediaFiles = [];
     let allowSubmitWithoutMedia = false;
@@ -391,6 +392,15 @@ const generateOrderId = () => {
         mediaPromptModal.classList.remove('open');
         mediaPromptModal.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+    };
+
+    const updateMediaPromptSubmitLabel = (mediaCount) => {
+        if (!mediaPromptSkipBtn || !mediaPromptAddBtn) return;
+        mediaPromptSkipBtn.textContent = mediaCount > 0 ? 'שלח הזמנה' : 'שלח הזמנה בלי מדיה';
+        mediaPromptSkipBtn.classList.toggle('mmw-primary', mediaCount > 0);
+        mediaPromptSkipBtn.classList.toggle('mmw-ghost', mediaCount === 0);
+        mediaPromptAddBtn.classList.toggle('mmw-primary', mediaCount === 0);
+        mediaPromptAddBtn.classList.toggle('mmw-ghost', mediaCount > 0);
     };
 
     /** עדכון סרגל ההתקדמות */
@@ -1177,6 +1187,9 @@ const generateOrderId = () => {
             }
             renderApartmentMediaList();
             if (apartmentMediaFiles.length > 0) allowSubmitWithoutMedia = false;
+            if (mediaPromptModal?.classList.contains('open')) {
+                renderMediaPromptPreview(getSelectedMediaFiles());
+            }
         });
     }
     if (apartmentMediaClear) {
@@ -1187,7 +1200,11 @@ const generateOrderId = () => {
     }
 
     if (mediaPromptCloseBtn) {
-        mediaPromptCloseBtn.addEventListener('click', closeMediaPrompt);
+        mediaPromptCloseBtn.addEventListener('click', () => {
+            // חוויית שימוש: X משמעו "המשך בלי מדיה" כדי לא להציג את הפופאפ שוב ושוב
+            allowSubmitWithoutMedia = true;
+            closeMediaPrompt();
+        });
     }
     if (mediaPromptModal) {
         mediaPromptModal.addEventListener('click', (e) => {
@@ -1197,11 +1214,7 @@ const generateOrderId = () => {
     if (mediaPromptAddBtn) {
         mediaPromptAddBtn.addEventListener('click', () => {
             allowSubmitWithoutMedia = false;
-            closeMediaPrompt();
-            if (currentStep === 5) {
-                navigate(-1);
-            }
-            document.querySelector('.mmw-apartment-media, #mmwItems')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (apartmentMediaInput) apartmentMediaInput.click();
         });
     }
     if (mediaPromptSkipBtn) {
@@ -1216,7 +1229,8 @@ const generateOrderId = () => {
         apartmentMediaFiles.map((file) => ({
             file,
             index: -1,
-            itemName: null
+            itemName: null,
+            source: 'apartment'
         }));
 
     const collectMediaFilesFromRows = () => {
@@ -1228,10 +1242,88 @@ const generateOrderId = () => {
             mediaFiles.push({
                 file,
                 index,
-                itemName: row.querySelector(`[name="item_name_${index}"]`)?.value || ''
+                itemName: row.querySelector(`[name="item_name_${index}"]`)?.value || '',
+                source: 'row'
             });
         });
         return mediaFiles;
+    };
+
+    const getSelectedMediaFiles = () => collectApartmentMediaFiles().concat(collectMediaFilesFromRows());
+
+    const removeSelectedMedia = (media) => {
+        if (media.source === 'apartment') {
+            const removeIdx = apartmentMediaFiles.indexOf(media.file);
+            if (removeIdx >= 0) apartmentMediaFiles.splice(removeIdx, 1);
+            renderApartmentMediaList();
+            return;
+        }
+        if (media.source === 'row') {
+            const rows = document.querySelectorAll('.mmw-items .row');
+            const row = rows[media.index];
+            if (!row) return;
+            const fileInput = row.querySelector('.mmw-img-input');
+            const previewImg = row.querySelector('.preview');
+            const previewVideo = row.querySelector('.preview-video');
+            const imgBtn = row.querySelector('.img-btn');
+            if (fileInput) fileInput.value = '';
+            if (previewImg) {
+                previewImg.src = '';
+                previewImg.style.display = 'none';
+            }
+            if (previewVideo) {
+                previewVideo.pause?.();
+                previewVideo.removeAttribute('src');
+                previewVideo.load?.();
+                previewVideo.style.display = 'none';
+            }
+            if (imgBtn) imgBtn.style.display = 'inline-flex';
+        }
+    };
+
+    const renderMediaPromptPreview = (mediaFiles) => {
+        if (!mediaPromptList) return;
+        mediaPromptList.innerHTML = '';
+
+        if (!mediaFiles.length) {
+            mediaPromptList.hidden = true;
+            updateMediaPromptSubmitLabel(0);
+            return;
+        }
+
+        mediaFiles.forEach((media) => {
+            const file = media.file;
+            const li = document.createElement('li');
+            li.className = 'mmw-media-prompt-item';
+
+            const main = document.createElement('div');
+            main.className = 'mmw-media-prompt-main';
+
+            const name = document.createElement('span');
+            name.className = 'mmw-media-prompt-name';
+            name.textContent = file?.name || 'קובץ מדיה';
+
+            const size = document.createElement('span');
+            size.className = 'mmw-media-prompt-size';
+            size.textContent = file?.size ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : '';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'mmw-media-prompt-remove';
+            removeBtn.setAttribute('aria-label', 'הסר קובץ');
+            removeBtn.textContent = '×';
+            removeBtn.addEventListener('click', () => {
+                removeSelectedMedia(media);
+                renderMediaPromptPreview(getSelectedMediaFiles());
+            });
+
+            main.append(name, size);
+            li.append(main, removeBtn);
+            mediaPromptList.appendChild(li);
+        });
+
+        mediaPromptList.hidden = false;
+        updateMediaPromptSubmitLabel(mediaFiles.length);
     };
 
     const uploadMediaFilesToGcs = async (mediaFiles) => {
@@ -1586,8 +1678,9 @@ const generateOrderId = () => {
 
           if (!validateStep(currentStep)) return;
 
-        const mediaFiles = collectApartmentMediaFiles().concat(collectMediaFilesFromRows());
+        const mediaFiles = getSelectedMediaFiles();
         if (mediaFiles.length === 0 && !allowSubmitWithoutMedia) {
+            renderMediaPromptPreview(mediaFiles);
             openMediaPrompt();
             return;
         }
@@ -1690,8 +1783,23 @@ const generateOrderId = () => {
         await new Promise(resolve => setTimeout(resolve, 3000)); 
 
         const eid = payload.event_id || sessionStorage.getItem('liftygo_event_id') || '';
-        const tnxUrl = 'https://liftygo.co.il/tnx' + (eid ? '/?event_id=' + encodeURIComponent(eid) : '');
-        window.location.href = tnxUrl;
+        const leadName = String(payload.name || '').trim();
+        const leadPhone = String(payload.phone || '').trim();
+        const termsEl = document.getElementById('mmwTermsCheckbox');
+        const termsApproved = !!(termsEl && termsEl.checked);
+        const leadTerms = termsApproved ? '1' : '0';
+
+        sessionStorage.setItem('liftygo_lead_name', leadName);
+        sessionStorage.setItem('liftygo_lead_phone', leadPhone);
+        sessionStorage.setItem('liftygo_lead_terms', leadTerms);
+
+        const tnxUrl = new URL('https://liftygo.co.il/tnx/');
+        if (eid) tnxUrl.searchParams.set('event_id', eid);
+        if (leadName) tnxUrl.searchParams.set('lead_name', leadName);
+        if (leadPhone) tnxUrl.searchParams.set('lead_phone', leadPhone);
+        tnxUrl.searchParams.set('lead_terms', leadTerms);
+
+        window.location.href = tnxUrl.toString();
     });
 
     // ודא שהלוגיקה הדינמית פועלת גם בטעינת הדף (כאשר אין בחירה ראשונית)
